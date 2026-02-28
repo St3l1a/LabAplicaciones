@@ -16,6 +16,7 @@ import android.content.Context
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -31,8 +32,11 @@ import androidx.compose.ui.unit.dp
 import org.json.JSONArray
 import org.json.JSONObject
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.text.font.FontWeight
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -43,63 +47,101 @@ class MainActivity : ComponentActivity() {
                 CampingsScreen()
             }
         }
-    } 
+    }
 }
-
 @Composable
 fun CampingsScreen() {
     val context = LocalContext.current
-    // Load the initial data
     val rawData = remember { getData(context) }
 
-    // State for the list that will change when sorted
-    val campings = remember { mutableStateOf(rawData) }
-
-    // State for the Dropdown Menu
+    val campings = remember { mutableStateOf(
+        rawData.sortedBy { it.nombre } // orden inicial por nombre
+    ) }
+    var currentSort by remember { mutableStateOf("nombre") }
+    var ascending by remember { mutableStateOf(true) }
+    var tipo by remember { mutableStateOf(true) }
     var expanded by remember { mutableStateOf(false) }
+
+    // --- Función local para ordenar ---
+    fun applySort() {
+        campings.value = when (currentSort) {
+            "nombre" -> if (ascending) rawData.sortedBy { it.nombre } else rawData.sortedByDescending { it.nombre }
+            "categoria" -> if (ascending) rawData.sortedBy { it.categoria } else rawData.sortedByDescending { it.categoria }
+            "municipio" -> if (ascending) rawData.sortedBy { it.municipio } else rawData.sortedByDescending { it.municipio }
+            else -> rawData
+        }
+    }
 
     Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
 
-        // --- Sorting UI ---
-        Box(modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp)) {
+        // --- Row con Dropdown y botón Asc/Desc ---
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = 30.dp),
+            horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(8.dp)
+        ) {
+
+            // Botón de Dropdown con texto dinámico
             androidx.compose.material3.OutlinedButton(
                 onClick = { expanded = true },
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier.weight(1f)
             ) {
-                Text("Sort by...")
+                val displayText = when (currentSort) {
+                    "nombre" -> "Sort by: Name"
+                    "categoria" -> "Sort by: Category"
+                    "municipio" -> "Sort by: Municipality"
+                    else -> "Sort by..."
+                }
+                Text(displayText)
             }
 
+            // Botón Asc/Desc
+            androidx.compose.material3.OutlinedButton(
+                onClick = {
+                    ascending = !ascending
+                    applySort()
+                },
+                modifier = Modifier.height(48.dp)
+            ) {
+                Text(if (ascending) "▲" else "▼")
+            }
+
+            // DropdownMenu asociado al primer botón
             androidx.compose.material3.DropdownMenu(
                 expanded = expanded,
                 onDismissRequest = { expanded = false }
             ) {
-                androidx.compose.material3.DropdownMenuItem(
-                    text = { Text("Name (A-Z)") },
+                DropdownMenuItem(
+                    text = { Text("Name") },
                     onClick = {
-                        campings.value = campings.value.sortedBy { it.nombre }
+                        currentSort = "nombre"
+                        applySort()
                         expanded = false
                     }
                 )
-                androidx.compose.material3.DropdownMenuItem(
+                DropdownMenuItem(
                     text = { Text("Category") },
                     onClick = {
-                        campings.value = campings.value.sortedByDescending { it.categoria }
+                        currentSort = "categoria"
+                        applySort()
                         expanded = false
                     }
                 )
-                androidx.compose.material3.DropdownMenuItem(
+                DropdownMenuItem(
                     text = { Text("Municipality") },
                     onClick = {
-                        campings.value = campings.value.sortedBy { it.municipio }
+                        currentSort = "municipio"
+                        applySort()
                         expanded = false
                     }
                 )
             }
         }
 
-        // --- List UI ---
+        // --- Lista ---
         LazyColumn(
-            modifier = Modifier.weight(1f),
+            modifier = Modifier.weight(1f).padding(top = 1.dp),
             contentPadding = PaddingValues(vertical = 8.dp)
         ) {
             items(campings.value) { camping ->
@@ -108,6 +150,7 @@ fun CampingsScreen() {
         }
     }
 }
+
 
 @Composable
 fun CampingItem(camping: Camping) {
