@@ -177,7 +177,7 @@ fun CampingItem(camping: Camping) {
             Text(text = "Provincia: ${camping.provincia}")
             Text(text = "Categoria: ${camping.categoria}")
             Text(text = "Dirección: ${camping.direccion}")
-            Text(text = "Teléfono: ${camping.telefono}")
+            Text(text = "Teléfono: ${camping.email}")
         }
     }
 }
@@ -214,10 +214,10 @@ fun getData(context: Context): List<Camping> {
         val provincia = campingObject.optString("Provincia", "No disponible")
         val categoria = campingObject.optString("Categoria","No disponible")
         val direccion = campingObject.optString("Direccion", "No disponible")
-        val telefono = campingObject.optString("Telefono", "No disponible")
+        val email = campingObject.optString("Email", "No disponible")
 
         listaCampings.add(
-            Camping(nombre, municipio, provincia, categoria, direccion, telefono)
+            Camping(nombre, municipio, provincia, categoria, direccion, email)
         )
     }
 

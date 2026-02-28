@@ -6,5 +6,5 @@ data class Camping(
     val provincia: String,
     val categoria: String,
     val direccion: String,
-    val telefono: String
+    val email: String
 )
