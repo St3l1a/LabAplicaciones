@@ -10,16 +10,28 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavType
 import androidx.navigation.compose.*
+import androidx.navigation.navArgument
 import org.json.JSONObject
 import Alexandre.Estrella.uv.es.ui.theme.CampingsCVTheme
-import androidx.navigation.navArgument
+
+// -------------------- ENUM DE ORDENACIÓN --------------------
+
+enum class SortOption(val label: String) {
+    NOMBRE("Nombre"),
+    MUNICIPIO("Municipio"),
+    PROVINCIA("Provincia"),
+    CATEGORIA("Categoría")
+}
 
 // -------------------- ROUTES --------------------
 
@@ -58,7 +70,6 @@ fun AppNavGraph() {
         navController = navController,
         startDestination = Routes.LIST
     ) {
-
         composable(Routes.LIST) {
             CampingsListScreen(
                 campings = campings,
@@ -70,13 +81,10 @@ fun AppNavGraph() {
 
         composable(
             route = Routes.DETAIL_ROUTE,
-            arguments = listOf(navArgument(Routes.ARG_ID) {
-                type = NavType.StringType
-            })
+            arguments = listOf(navArgument(Routes.ARG_ID) { type = NavType.StringType })
         ) { backStackEntry ->
-
             val campingId = backStackEntry.arguments?.getString(Routes.ARG_ID)
-            val selectedCamping = campings.firstOrNull { it.id == campingId }
+            val selectedCamping = campings.find { it.id == campingId }
 
             CampingDetailScreen(
                 camping = selectedCamping,
@@ -86,32 +94,94 @@ fun AppNavGraph() {
     }
 }
 
-// -------------------- LIST SCREEN --------------------
+// -------------------- LIST SCREEN (CON SORT ASC/DESC) --------------------
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CampingsListScreen(
     campings: List<Camping>,
     onCampingClick: (String) -> Unit
 ) {
-    LazyColumn(
-        modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(8.dp)
-    ) {
-        items(campings) { camping ->
-            Card(
+    // Estados para el criterio y la dirección
+    var currentSort by remember { mutableStateOf(SortOption.NOMBRE) }
+    var isAscending by remember { mutableStateOf(true) }
+
+    // Lógica de ordenación combinada
+    val sortedCampings = remember(campings, currentSort, isAscending) {
+        val selector: (Camping) -> String = when (currentSort) {
+            SortOption.NOMBRE -> { { it.nombre } }
+            SortOption.MUNICIPIO -> { { it.municipio } }
+            SortOption.PROVINCIA -> { { it.provincia } }
+            SortOption.CATEGORIA -> { { it.categoria } }
+        }
+
+        if (isAscending) campings.sortedBy(selector)
+        else campings.sortedByDescending(selector)
+    }
+
+    Scaffold(
+        topBar = {
+            TopAppBar(title = { Text("Campings CV") })
+        }
+    ) { padding ->
+        Column(modifier = Modifier.padding(padding)) {
+
+            // Cabecera de controles: Texto + Botón de dirección
+            Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(8.dp),
-                onClick = { onCampingClick(camping.id) }
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    Text(
-                        text = camping.nombre,
-                        style = MaterialTheme.typography.titleMedium
+                Text(
+                    "Ordenar por:",
+                    style = MaterialTheme.typography.labelMedium
+                )
+
+                // Botón para cambiar entre A-Z y Z-A
+                TextButton(onClick = { isAscending = !isAscending }) {
+                    Icon(
+                        imageVector = if (isAscending) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
+                        contentDescription = null
                     )
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text("Municipio: ${camping.municipio}")
-                    Text("Provincia: ${camping.provincia}")
+                    Text(if (isAscending) "A-Z" else "Z-A")
+                }
+            }
+
+            // Fila de Chips
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 12.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                SortOption.entries.forEach { option ->
+                    FilterChip(
+                        selected = currentSort == option,
+                        onClick = { currentSort = option },
+                        label = { Text(option.label) }
+                    )
+                }
+            }
+
+            LazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp)
+            ) {
+                items(sortedCampings) { camping ->
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 4.dp),
+                        onClick = { onCampingClick(camping.id) }
+                    ) {
+                        Column(modifier = Modifier.padding(16.dp)) {
+                            Text(text = camping.nombre, style = MaterialTheme.typography.titleMedium)
+                            Text("Municipio: ${camping.municipio}", style = MaterialTheme.typography.bodySmall)
+                            Text("Provincia: ${camping.provincia}", style = MaterialTheme.typography.bodySmall)
+                        }
+                    }
                 }
             }
         }
@@ -120,6 +190,7 @@ fun CampingsListScreen(
 
 // -------------------- DETAIL SCREEN --------------------
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CampingDetailScreen(
     camping: Camping?,
@@ -128,31 +199,24 @@ fun CampingDetailScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(camping?.nombre ?: "Camping Detail") },
+                title = { Text(camping?.nombre ?: "Detalle") },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.Default.ArrowBack, contentDescription = "Atrás")
                     }
                 }
             )
         }
     ) { padding ->
-
         if (camping == null) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(padding)
-            ) {
-                Text("Camping not found", modifier = Modifier.padding(16.dp))
-            }
+            Text("No encontrado", modifier = Modifier.padding(padding).padding(16.dp))
         } else {
             Column(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(padding)
                     .padding(16.dp),
-                verticalArrangement = Arrangement.spacedBy(10.dp)
+                verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 DetailRow("Nombre", camping.nombre)
                 DetailRow("Municipio", camping.municipio)
@@ -167,47 +231,41 @@ fun CampingDetailScreen(
 
 @Composable
 fun DetailRow(label: String, value: String) {
-    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-        Text(label, style = MaterialTheme.typography.labelMedium)
+    Column {
+        Text(label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
         Text(value, style = MaterialTheme.typography.bodyLarge)
-        Divider(modifier = Modifier.padding(top = 8.dp))
+        HorizontalDivider(modifier = Modifier.padding(top = 4.dp), thickness = 0.5.dp)
     }
 }
 
 // -------------------- JSON FUNCTIONS --------------------
 
 fun readJsonFromRaw(context: Context, resourceId: Int): String {
-    val inputStream = context.resources.openRawResource(resourceId)
-    return inputStream.bufferedReader().use { it.readText() }
+    return context.resources.openRawResource(resourceId).bufferedReader().use { it.readText() }
 }
 
 fun getData(context: Context): List<Camping> {
-
     val listaCampings = mutableListOf<Camping>()
-    val rawResourceId = R.raw.datos
+    try {
+        val jsonFileContent = readJsonFromRaw(context, R.raw.datos)
+        val rootObject = JSONObject(jsonFileContent)
+        val resultObject = rootObject.getJSONObject("result")
+        val jsonArray = resultObject.getJSONArray("records")
 
-    val jsonFileContent = readJsonFromRaw(context, rawResourceId)
-
-    val rootObject = JSONObject(jsonFileContent)
-    val resultObject = rootObject.getJSONObject("result")
-    val jsonArray = resultObject.getJSONArray("records")
-
-    for (i in 0 until jsonArray.length()) {
-
-        val campingObject = jsonArray.getJSONObject(i)
-
-        val id = campingObject.optString("_id", i.toString())
-        val nombre = campingObject.optString("Nombre", "No disponible")
-        val municipio = campingObject.optString("Municipio", "No disponible")
-        val provincia = campingObject.optString("Provincia", "No disponible")
-        val categoria = campingObject.optString("Categoria", "No disponible")
-        val direccion = campingObject.optString("Direccion", "No disponible")
-        val email = campingObject.optString("Email", "No disponible")
-
-        listaCampings.add(
-            Camping(id, nombre, municipio, provincia, categoria, direccion, email)
-        )
-    }
-
+        for (i in 0 until jsonArray.length()) {
+            val obj = jsonArray.getJSONObject(i)
+            listaCampings.add(
+                Camping(
+                    id = obj.optString("_id", i.toString()),
+                    nombre = obj.optString("Nombre", "N/A"),
+                    municipio = obj.optString("Municipio", "N/A"),
+                    provincia = obj.optString("Provincia", "N/A"),
+                    categoria = obj.optString("Categoria", "N/A"),
+                    direccion = obj.optString("Direccion", "N/A"),
+                    email = obj.optString("Email", "N/A")
+                )
+            )
+        }
+    } catch (e: Exception) { e.printStackTrace() }
     return listaCampings
 }
