@@ -167,7 +167,9 @@ fun CampingsListScreen(campings: List<Camping>, onCampingClick: (String) -> Unit
                         ListItem(
                             headlineContent = { Text(camping.nombre) },
                             supportingContent = { Text("${camping.municipio} (${camping.provincia})") },
-                            trailingContent = { Badge { Text(camping.categoria) } }
+                            trailingContent = {
+                                StarRating(getStarCount(camping.codCategoria))
+                            }
                         )
                     }
                 }
@@ -175,7 +177,22 @@ fun CampingsListScreen(campings: List<Camping>, onCampingClick: (String) -> Unit
         }
     }
 }
-
+fun getStarCount(codCategoria: String): Int {
+    return codCategoria.firstOrNull()?.digitToIntOrNull() ?: 0
+}
+@Composable
+fun StarRating(stars: Int) {
+    Row {
+        repeat(stars) {
+            Icon(
+                imageVector = Icons.Default.Star,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(18.dp)
+            )
+        }
+    }
+}
 // -------------------- DETAIL SCREEN (CON INTENTS) --------------------
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -201,10 +218,16 @@ fun CampingDetailScreen(camping: Camping?, onBack: () -> Unit) {
                         Icon(Icons.Default.Map, "Ver en Mapa")
                     }
                     // Acción: Abrir Web (Simulada con búsqueda si no hay URL directa)
-                    IconButton(onClick = {
-                        val webIntent = Intent(Intent.ACTION_VIEW, Uri.parse("https://www.google.com/search?q=${camping?.nombre}"))
-                        context.startActivity(webIntent)
-                    }) {
+                    IconButton(
+                        enabled = !camping?.web.isNullOrBlank(),
+                        onClick = {
+                            camping?.web?.let { url ->
+                                val finalUrl = if (url.startsWith("http")) url else "https://$url"
+                                val webIntent = Intent(Intent.ACTION_VIEW, Uri.parse(finalUrl))
+                                context.startActivity(webIntent)
+                            }
+                        }
+                    ) {
                         Icon(Icons.Default.Public, "Web")
                     }
                 }
@@ -216,10 +239,30 @@ fun CampingDetailScreen(camping: Camping?, onBack: () -> Unit) {
                 // Sección Info Principal
                 ElevatedCard(modifier = Modifier.fillMaxWidth()) {
                     Column(modifier = Modifier.padding(16.dp)) {
-                        DetailItem(Icons.Default.Home, "Categoría", it.categoria)
-                        DetailItem(Icons.Default.LocationOn, "Dirección", it.direccion)
+
+                        DetailItem(Icons.Default.Badge, "Signatura", it.signatura)
+                        DetailItem(Icons.Default.Info, "Estado", it.estado)
+                        DetailItem(Icons.Default.Star, "Categoría", it.categoria)
+                        DetailItem(Icons.Default.Home, "Modalidad", it.modalidad)
+
+                        DetailItem(Icons.Default.LocationOn, "Provincia", it.provincia)
                         DetailItem(Icons.Default.Place, "Municipio", it.municipio)
+                        DetailItem(Icons.Default.LocationCity, "Dirección", it.direccion)
+                        DetailItem(Icons.Default.Numbers, "CP", it.cp)
+
                         DetailItem(Icons.Default.Email, "Email", it.email)
+                        DetailItem(Icons.Default.Public, "Web", it.web)
+
+                        DetailItem(Icons.Default.Terrain, "Parcelas", it.numParcelas)
+                        DetailItem(Icons.Default.Group, "Plazas parcela", it.plazasParcela)
+                        DetailItem(Icons.Default.HolidayVillage, "Bungalows", it.numBungalows)
+                        DetailItem(Icons.Default.GroupWork, "Plazas bungalows", it.plazasBungalows)
+
+                        DetailItem(Icons.Default.CalendarToday, "Fecha Alta", it.fechaAlta)
+                        DetailItem(Icons.Default.EventBusy, "Fecha Baja", it.fechaBaja)
+                        DetailItem(Icons.Default.Schedule, "Periodo", it.periodo)
+
+                        DetailItem(Icons.Default.Groups, "Plazas Totales", it.plazas)
                     }
                 }
 
@@ -250,20 +293,57 @@ fun DetailItem(icon: androidx.compose.ui.graphics.vector.ImageVector, label: Str
 fun getData(context: Context): List<Camping> {
     val list = mutableListOf<Camping>()
     try {
-        val json = context.resources.openRawResource(R.raw.datos).bufferedReader().use { it.readText() }
-        val records = JSONObject(json).getJSONObject("result").getJSONArray("records")
+        val json = context.resources.openRawResource(R.raw.datos)
+            .bufferedReader()
+            .use { it.readText() }
+
+        val records = JSONObject(json)
+            .getJSONObject("result")
+            .getJSONArray("records")
+
         for (i in 0 until records.length()) {
             val o = records.getJSONObject(i)
-            list.add(Camping(
-                id = o.optString("_id"),
-                nombre = o.optString("Nombre"),
-                municipio = o.optString("Municipio"),
-                provincia = o.optString("Provincia"),
-                categoria = o.optString("Categoria"),
-                direccion = o.optString("Direccion"),
-                email = o.optString("Email")
-            ))
+
+            list.add(
+                Camping(
+                    id = o.optString("_id"),
+                    signatura = o.optString("Signatura"),
+                    codEstado = o.optString("Cod.Estado"),
+                    estado = o.optString("Estado"),
+                    codCategoria = o.optString("Cod. Categoria"),
+                    categoria = o.optString("Categoria"),
+                    nombre = o.optString("Nombre"),
+                    codProvincia = o.optString("Cod. Provincia"),
+                    provincia = o.optString("Provincia"),
+                    codMunicipio = o.optString("Cod. Municipio"),
+                    municipio = o.optString("Municipio"),
+                    cp = o.optString("CP"),
+                    direccion = o.optString("Direccion"),
+                    codTipoVia = o.optString("Cod. Tipo Via"),
+                    tipoVia = o.optString("Tipo via"),
+                    via = o.optString("Via"),
+                    numero = o.optString("Numero"),
+                    email = o.optString("Email"),
+                    web = o.optString("Web"),
+                    codModalidad = o.optString("Cod. Modalidad"),
+                    modalidad = o.optString("Modalidad"),
+                    numParcelas = o.optString("Núm. Parcelas"),
+                    plazasParcela = o.optString("Plazas Parcela"),
+                    numBungalows = o.optString("Núm. Bungalows"),
+                    plazasBungalows = o.optString("Plaza Bungalows"),
+                    supLibreAcampada = o.optString("Sup. Libre Acampada"),
+                    plazasLibreAcampada = o.optString("Plazas Libre Acampada"),
+                    plazas = o.optString("Plazas"),
+                    fechaAlta = o.optString("Fecha Alta"),
+                    fechaBaja = o.optString("Fecha Baja"),
+                    periodo = o.optString("Periodo"),
+                    diasPeriodo = o.optString("Días Periodo")
+                )
+            )
         }
-    } catch (e: Exception) { e.printStackTrace() }
+    } catch (e: Exception) {
+        e.printStackTrace()
+    }
+
     return list
 }
