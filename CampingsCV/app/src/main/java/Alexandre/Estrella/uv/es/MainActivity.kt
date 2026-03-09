@@ -23,6 +23,9 @@ import androidx.navigation.compose.*
 import androidx.navigation.navArgument
 import org.json.JSONObject
 import Alexandre.Estrella.uv.es.ui.theme.CampingsCVTheme
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 
 // -------------------- MODELO Y ENUMS --------------------
 
@@ -35,6 +38,8 @@ enum class SortOption(val label: String) {
 object Routes {
     const val LIST = "list"
     const val DETAIL = "detail/{id}"
+    const val FAVORITES = "favorites"
+
     fun detailRoute(id: String) = "detail/$id"
 }
 
@@ -53,27 +58,116 @@ class MainActivity : ComponentActivity() {
 }
 
 // -------------------- NAV GRAPH --------------------
-
 @Composable
 fun AppNavGraph() {
     val navController = rememberNavController()
     val context = LocalContext.current
     val campings = remember { getData(context) }
 
-    NavHost(navController = navController, startDestination = Routes.LIST) {
-        composable(Routes.LIST) {
-            CampingsListScreen(
-                campings = campings,
-                onCampingClick = { id -> navController.navigate(Routes.detailRoute(id)) }
+    Scaffold(
+        floatingActionButton = {
+            FloatingActionButton(
+                onClick = { navController.navigate(Routes.FAVORITES) }
+            ) {
+                Icon(Icons.Default.Favorite, contentDescription = "Favorites")
+            }
+        }
+    ) { padding ->
+
+        NavHost(
+            navController = navController,
+            startDestination = Routes.LIST,
+            modifier = Modifier.padding(padding)
+        ) {
+
+            composable(Routes.LIST) {
+                CampingsListScreen(
+                    campings = campings,
+                    onCampingClick = { id ->
+                        navController.navigate(Routes.detailRoute(id))
+                    }
+                )
+            }
+
+            composable(
+                route = Routes.DETAIL,
+                arguments = listOf(navArgument("id") { type = NavType.StringType })
+            ) { backStackEntry ->
+
+                val id = backStackEntry.arguments?.getString("id")
+                val camping = campings.find { it.id == id }
+
+                CampingDetailScreen(
+                    camping = camping,
+                    onBack = { navController.popBackStack() }
+                )
+            }
+
+            composable(Routes.FAVORITES) {
+
+                FavoritesScreen(
+                    onCampingClick = { id ->
+                        navController.navigate(Routes.detailRoute(id))
+                    }
+                )
+
+            }
+
+        }
+    }
+}
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun FavoritesScreen(onCampingClick: (String) -> Unit) {
+
+    val context = LocalContext.current
+    var favorites by remember { mutableStateOf<List<FavoriteCamping>>(emptyList()) }
+
+    LaunchedEffect(Unit) {
+
+        val dao = FavoriteDatabase.getInstance(context).favoriteDao()
+
+        CoroutineScope(Dispatchers.IO).launch {
+
+            favorites = dao.getAll()
+
+        }
+    }
+
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text("Campings Favoritos") }
             )
         }
-        composable(
-            route = Routes.DETAIL,
-            arguments = listOf(navArgument("id") { type = NavType.StringType })
-        ) { backStackEntry ->
-            val id = backStackEntry.arguments?.getString("id")
-            val camping = campings.find { it.id == id }
-            CampingDetailScreen(camping = camping, onBack = { navController.popBackStack() })
+    ) { padding ->
+
+        LazyColumn(
+            modifier = Modifier
+                .padding(padding)
+                .fillMaxSize()
+        ) {
+
+            items(favorites) { camping ->
+
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    onClick = { onCampingClick(camping.campingId) }
+                ) {
+
+                    ListItem(
+                        headlineContent = { Text(camping.nombre) },
+                        supportingContent = {
+                            Text("${camping.municipio} (${camping.provincia})")
+                        },
+                        trailingContent = {
+                            StarRating(getStarCount(camping.categoria))
+                        }
+                    )
+                }
+            }
         }
     }
 }
@@ -87,6 +181,7 @@ fun CampingsListScreen(campings: List<Camping>, onCampingClick: (String) -> Unit
     var currentSort by remember { mutableStateOf(SortOption.NOMBRE) }
     var isAscending by remember { mutableStateOf(true) }
     var selectedProvincia by remember { mutableStateOf("Todas") }
+    val favoriteCampings = remember { mutableStateListOf<String>() }
 
     val provincias = listOf("Todas") + campings.map { it.provincia }.distinct().sorted()
 
@@ -194,36 +289,94 @@ fun StarRating(stars: Int) {
     }
 }
 // -------------------- DETAIL SCREEN (CON INTENTS) --------------------
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CampingDetailScreen(camping: Camping?, onBack: () -> Unit) {
+
     val context = LocalContext.current
+    val dao = FavoriteDatabase.getInstance(context).favoriteDao()
+
+    var isFavorite by remember { mutableStateOf(false) }
+
+    // Comprobar si ya está en favoritos al abrir
+    LaunchedEffect(camping?.id) {
+        CoroutineScope(Dispatchers.IO).launch {
+            val fav = dao.getById(camping?.id ?: "")
+            isFavorite = fav != null
+        }
+    }
 
     Scaffold(
         topBar = {
             TopAppBar(
                 title = { Text(camping?.nombre ?: "Detalle") },
+
                 navigationIcon = {
-                    IconButton(onClick = onBack) { Icon(Icons.Default.ArrowBack, "Atrás") }
+                    IconButton(onClick = onBack) {
+                        Icon(Icons.Default.ArrowBack, "Atrás")
+                    }
                 },
+
                 actions = {
-                    // Acción: Abrir Mapas
+
+                    // BOTÓN FAVORITO
                     IconButton(onClick = {
-                        val gmmIntentUri = Uri.parse("geo:0,0?q=${camping?.nombre}, ${camping?.municipio}")
+
+                        CoroutineScope(Dispatchers.IO).launch {
+
+                            if (isFavorite) {
+
+                                dao.deleteById(camping!!.id)
+
+                            } else {
+
+                                dao.insert(
+                                    FavoriteCamping(
+                                        campingId = camping!!.id,
+                                        nombre = camping.nombre,
+                                        municipio = camping.municipio,
+                                        provincia = camping.provincia,
+                                        categoria = camping.categoria
+                                    )
+                                )
+                            }
+
+                            isFavorite = !isFavorite
+                        }
+
+                    }) {
+
+                        Icon(
+                            imageVector =
+                                if (isFavorite)
+                                    Icons.Default.Favorite
+                                else
+                                    Icons.Default.FavoriteBorder,
+
+                            contentDescription = "Favorite"
+                        )
+                    }
+
+                    // MAPA
+                    IconButton(onClick = {
+                        val gmmIntentUri =
+                            Uri.parse("geo:0,0?q=${camping?.nombre}, ${camping?.municipio}")
                         val mapIntent = Intent(Intent.ACTION_VIEW, gmmIntentUri)
                         mapIntent.setPackage("com.google.android.apps.maps")
                         context.startActivity(mapIntent)
                     }) {
-                        Icon(Icons.Default.Map, "Ver en Mapa")
+                        Icon(Icons.Default.Map, "Ver en mapa")
                     }
-                    // Acción: Abrir Web (Simulada con búsqueda si no hay URL directa)
+
+                    // WEB
                     IconButton(
                         enabled = !camping?.web.isNullOrBlank(),
                         onClick = {
                             camping?.web?.let { url ->
-                                val finalUrl = if (url.startsWith("http")) url else "https://$url"
-                                val webIntent = Intent(Intent.ACTION_VIEW, Uri.parse(finalUrl))
+                                val finalUrl =
+                                    if (url.startsWith("http")) url else "https://$url"
+                                val webIntent =
+                                    Intent(Intent.ACTION_VIEW, Uri.parse(finalUrl))
                                 context.startActivity(webIntent)
                             }
                         }
@@ -234,10 +387,18 @@ fun CampingDetailScreen(camping: Camping?, onBack: () -> Unit) {
             )
         }
     ) { padding ->
+
         camping?.let {
-            Column(modifier = Modifier.padding(padding).padding(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                // Sección Info Principal
+
+            Column(
+                modifier = Modifier
+                    .padding(padding)
+                    .padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+
                 ElevatedCard(modifier = Modifier.fillMaxWidth()) {
+
                     Column(modifier = Modifier.padding(16.dp)) {
 
                         DetailItem(Icons.Default.Badge, "Signatura", it.signatura)
@@ -267,7 +428,7 @@ fun CampingDetailScreen(camping: Camping?, onBack: () -> Unit) {
                 }
 
                 Text(
-                    "Utiliza los iconos de la barra superior para navegar hasta el camping o visitar su sitio web oficial.",
+                    "Utiliza los iconos de la barra superior para navegar hasta el camping o visitar su sitio web.",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.outline
                 )
@@ -275,7 +436,6 @@ fun CampingDetailScreen(camping: Camping?, onBack: () -> Unit) {
         }
     }
 }
-
 @Composable
 fun DetailItem(icon: androidx.compose.ui.graphics.vector.ImageVector, label: String, value: String) {
     Row(modifier = Modifier.padding(vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
