@@ -32,5 +32,7 @@ data class Camping(
     val fechaAlta: String,
     val fechaBaja: String,
     val periodo: String,
-    val diasPeriodo: String
+    val diasPeriodo: String,
+    var latitude: Double? = null,
+    var longitude: Double? = null
 )

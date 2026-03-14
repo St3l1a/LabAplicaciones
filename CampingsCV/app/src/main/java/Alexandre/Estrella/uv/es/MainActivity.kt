@@ -26,12 +26,32 @@ import Alexandre.Estrella.uv.es.ui.theme.CampingsCVTheme
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import android.Manifest
+import android.content.pm.PackageManager
+import android.location.Location
+import androidx.annotation.RequiresPermission
+import androidx.core.content.ContextCompat
+import com.google.android.gms.location.CurrentLocationRequest
+import com.google.android.gms.location.LocationServices
+import com.google.android.gms.location.Priority
+import com.google.android.gms.tasks.CancellationTokenSource
+import kotlin.math.roundToInt
+import kotlinx.coroutines.tasks.await
+import android.location.Geocoder
+import java.util.Locale
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+
 
 // -------------------- MODELO Y ENUMS --------------------
 
 enum class SortOption(val label: String) {
-    NOMBRE("Nombre"), MUNICIPIO("Municipio"), CATEGORIA("Categoría")
+    NOMBRE("Nombre"),
+    MUNICIPIO("Municipio"),
+    CATEGORIA("Categoría"),
+    DISTANCIA("Distancia")
 }
+
 
 // -------------------- RUTAS --------------------
 
@@ -173,33 +193,140 @@ fun FavoritesScreen(onCampingClick: (String) -> Unit) {
 }
 
 // -------------------- LIST SCREEN (CON BUSQUEDA Y FILTROS) --------------------
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CampingsListScreen(campings: List<Camping>, onCampingClick: (String) -> Unit) {
+
     var searchQuery by remember { mutableStateOf("") }
     var currentSort by remember { mutableStateOf(SortOption.NOMBRE) }
     var isAscending by remember { mutableStateOf(true) }
     var selectedProvincia by remember { mutableStateOf("Todas") }
-    val favoriteCampings = remember { mutableStateListOf<String>() }
+
+    val context = LocalContext.current
+
+    var userLocation by remember { mutableStateOf<Location?>(null) }
+    var campingDistances by remember { mutableStateOf<Map<String, Int>>(emptyMap()) }
 
     val provincias = listOf("Todas") + campings.map { it.provincia }.distinct().sorted()
 
-    // Lógica combinada: Filtrado + Búsqueda + Ordenación
-    val filteredList = remember(searchQuery, currentSort, isAscending, selectedProvincia) {
-        campings
-            .filter {
-                (it.nombre.contains(searchQuery, ignoreCase = true) || it.municipio.contains(searchQuery, ignoreCase = true)) &&
-                        (selectedProvincia == "Todas" || it.provincia == selectedProvincia)
-            }
-            .let { list ->
-                val selector: (Camping) -> String = when (currentSort) {
-                    SortOption.NOMBRE -> { { it.nombre } }
-                    SortOption.MUNICIPIO -> { { it.municipio } }
-                    SortOption.CATEGORIA -> { { it.categoria } }
+    val permissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestMultiplePermissions()
+    ) { permissions ->
+
+        val granted =
+            permissions[Manifest.permission.ACCESS_FINE_LOCATION] == true ||
+                    permissions[Manifest.permission.ACCESS_COARSE_LOCATION] == true
+
+        if (granted) {
+
+            CoroutineScope(Dispatchers.IO).launch {
+
+                val loc = getUserLocation(context)
+
+                loc?.let { userLoc ->
+
+                    val distances = mutableMapOf<String, Int>()
+
+                    for (camping in campings) {
+
+                        val coords = getCampingCoordinates(context, camping)
+
+                        coords?.let {
+
+                            val distance = calculateDistance(
+                                userLoc.latitude,
+                                userLoc.longitude,
+                                it.first,
+                                it.second
+                            )
+
+                            distances[camping.id] = distance
+                        }
+                    }
+
+                    campingDistances = distances
+                    userLocation = loc
                 }
-                if (isAscending) list.sortedBy(selector) else list.sortedByDescending(selector)
             }
+        }
+    }
+
+    LaunchedEffect(Unit) {
+
+        if (!hasLocationPermission(context)) {
+
+            permissionLauncher.launch(
+                arrayOf(
+                    Manifest.permission.ACCESS_FINE_LOCATION,
+                    Manifest.permission.ACCESS_COARSE_LOCATION
+                )
+            )
+
+        } else {
+
+            val loc = getUserLocation(context)
+
+            loc?.let { userLoc ->
+
+                val distances = mutableMapOf<String, Int>()
+
+                for (camping in campings) {
+
+                    val coords = getCampingCoordinates(context, camping)
+
+                    coords?.let {
+
+                        val distance = calculateDistance(
+                            userLoc.latitude,
+                            userLoc.longitude,
+                            it.first,
+                            it.second
+                        )
+
+                        distances[camping.id] = distance
+                    }
+                }
+
+                campingDistances = distances
+                userLocation = loc
+            }
+        }
+    }
+
+    val filteredList = remember(
+        searchQuery,
+        currentSort,
+        isAscending,
+        selectedProvincia,
+        campingDistances
+    ) {
+
+        val filtered = campings.filter {
+
+            (it.nombre.contains(searchQuery, ignoreCase = true)
+                    || it.municipio.contains(searchQuery, ignoreCase = true))
+                    &&
+                    (selectedProvincia == "Todas" || it.provincia == selectedProvincia)
+        }
+
+        when (currentSort) {
+
+            SortOption.NOMBRE ->
+                if (isAscending) filtered.sortedBy { it.nombre }
+                else filtered.sortedByDescending { it.nombre }
+
+            SortOption.MUNICIPIO ->
+                if (isAscending) filtered.sortedBy { it.municipio }
+                else filtered.sortedByDescending { it.municipio }
+
+            SortOption.CATEGORIA ->
+                if (isAscending) filtered.sortedBy { it.categoria }
+                else filtered.sortedByDescending { it.categoria }
+
+            SortOption.DISTANCIA ->
+                if (isAscending) filtered.sortedBy { campingDistances[it.id] ?: Int.MAX_VALUE }
+                else filtered.sortedByDescending { campingDistances[it.id] ?: Int.MAX_VALUE }
+        }
     }
 
     Scaffold(
@@ -207,31 +334,53 @@ fun CampingsListScreen(campings: List<Camping>, onCampingClick: (String) -> Unit
             TopAppBar(
                 title = { Text("Campings CV") },
                 actions = {
-                    // Botón para alternar orden A-Z / Z-A
                     IconButton(onClick = { isAscending = !isAscending }) {
-                        Icon(if (isAscending) Icons.Default.SortByAlpha else Icons.Default.VerticalAlignBottom, "Orden")
+                        Icon(
+                            if (isAscending) Icons.Default.SortByAlpha
+                            else Icons.Default.VerticalAlignBottom,
+                            "Orden"
+                        )
                     }
                 }
             )
         }
     ) { padding ->
+
         Column(modifier = Modifier.padding(padding)) {
-            // BUSCADOR
+
             OutlinedTextField(
                 value = searchQuery,
                 onValueChange = { searchQuery = it },
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
                 placeholder = { Text("Buscar camping o municipio...") },
                 leadingIcon = { Icon(Icons.Default.Search, null) },
                 singleLine = true
             )
 
-            // FILTRO POR PROVINCIA (Chips)
-            Text("Filtrar por provincia:", modifier = Modifier.padding(start = 16.dp), style = MaterialTheme.typography.labelSmall)
-            LazyColumn(modifier = Modifier.height(50.dp).fillMaxWidth(), horizontalAlignment = Alignment.Start) {
+            Text(
+                "Filtrar por provincia:",
+                modifier = Modifier.padding(start = 16.dp),
+                style = MaterialTheme.typography.labelSmall
+            )
+
+            LazyColumn(
+                modifier = Modifier
+                    .height(50.dp)
+                    .fillMaxWidth(),
+                horizontalAlignment = Alignment.Start
+            ) {
+
                 item {
-                    Row(modifier = Modifier.padding(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+
+                    Row(
+                        modifier = Modifier.padding(horizontal = 16.dp),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+
                         provincias.forEach { prov ->
+
                             FilterChip(
                                 selected = selectedProvincia == prov,
                                 onClick = { selectedProvincia = prov },
@@ -242,26 +391,61 @@ fun CampingsListScreen(campings: List<Camping>, onCampingClick: (String) -> Unit
                 }
             }
 
-            // SELECTOR DE CRITERIO DE ORDEN
-            Row(modifier = Modifier.padding(horizontal = 16.dp), verticalAlignment = Alignment.CenterVertically) {
-                Text("Ordenar por: ", style = MaterialTheme.typography.labelSmall)
+            Row(
+                modifier = Modifier.padding(horizontal = 16.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+
+                Text(
+                    "Ordenar por: ",
+                    style = MaterialTheme.typography.labelSmall
+                )
+
                 SortOption.entries.forEach { option ->
+
                     TextButton(onClick = { currentSort = option }) {
-                        Text(option.label, color = if(currentSort == option) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline)
+
+                        Text(
+                            option.label,
+                            color =
+                                if (currentSort == option)
+                                    MaterialTheme.colorScheme.primary
+                                else
+                                    MaterialTheme.colorScheme.outline
+                        )
                     }
                 }
             }
 
-            // LISTA
             LazyColumn(modifier = Modifier.fillMaxSize()) {
+
                 items(filteredList) { camping ->
+
                     Card(
-                        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 6.dp),
                         onClick = { onCampingClick(camping.id) }
                     ) {
+
                         ListItem(
-                            headlineContent = { Text(camping.nombre) },
-                            supportingContent = { Text("${camping.municipio} (${camping.provincia})") },
+
+                            headlineContent = {
+                                Text(camping.nombre)
+                            },
+
+                            supportingContent = {
+
+                                Column {
+
+                                    Text("${camping.municipio} (${camping.provincia})")
+
+                                    campingDistances[camping.id]?.let {
+                                        Text("Distancia: $it km")
+                                    }
+                                }
+                            },
+
                             trailingContent = {
                                 StarRating(getStarCount(camping.codCategoria))
                             }
@@ -272,6 +456,7 @@ fun CampingsListScreen(campings: List<Camping>, onCampingClick: (String) -> Unit
         }
     }
 }
+
 fun getStarCount(codCategoria: String): Int {
     return codCategoria.firstOrNull()?.digitToIntOrNull() ?: 0
 }
@@ -506,4 +691,63 @@ fun getData(context: Context): List<Camping> {
     }
 
     return list
+}
+
+@RequiresPermission(allOf = [Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION])
+suspend fun getUserLocation(context: Context): Location? {
+    if (!hasLocationPermission(context)) return null
+
+    val fusedLocationClient = LocationServices.getFusedLocationProviderClient(context)
+
+    return try {
+        val request = CurrentLocationRequest.Builder()
+            .setPriority(Priority.PRIORITY_BALANCED_POWER_ACCURACY)
+            .build()
+
+        fusedLocationClient.getCurrentLocation(request, CancellationTokenSource().token).await()
+    } catch (e: Exception) {
+        null
+    }
+}
+
+private fun hasLocationPermission(context: Context): Boolean {
+    return ContextCompat.checkSelfPermission(
+        context,
+        Manifest.permission.ACCESS_COARSE_LOCATION
+    ) == PackageManager.PERMISSION_GRANTED ||
+            ContextCompat.checkSelfPermission(
+                context,
+                Manifest.permission.ACCESS_FINE_LOCATION
+            ) == PackageManager.PERMISSION_GRANTED
+}
+
+// Distance in kilometers (rounded)
+fun calculateDistance(userLat: Double, userLon: Double, campLat: Double, campLon: Double): Int {
+    val results = FloatArray(1)
+    Location.distanceBetween(userLat, userLon, campLat, campLon, results)
+    return (results[0] / 1000f).roundToInt()  // meters → km
+}
+
+
+
+suspend fun getCampingCoordinates(context: Context, camping: Camping): Pair<Double, Double>? {
+
+    return try {
+
+        val geocoder = Geocoder(context, Locale.getDefault())
+
+        val address = "${camping.direccion}, ${camping.municipio}, ${camping.provincia}"
+
+        val result = geocoder.getFromLocationName(address, 1)
+
+        if (!result.isNullOrEmpty()) {
+
+            val location = result[0]
+            Pair(location.latitude, location.longitude)
+
+        } else null
+
+    } catch (e: Exception) {
+        null
+    }
 }
