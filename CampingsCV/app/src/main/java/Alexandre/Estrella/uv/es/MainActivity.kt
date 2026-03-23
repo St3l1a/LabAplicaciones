@@ -41,6 +41,7 @@ import android.location.Geocoder
 import java.util.Locale
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import kotlinx.coroutines.withContext
 
 
 // -------------------- MODELO Y ENUMS --------------------
@@ -218,33 +219,22 @@ fun CampingsListScreen(campings: List<Camping>, onCampingClick: (String) -> Unit
                     permissions[Manifest.permission.ACCESS_COARSE_LOCATION] == true
 
         if (granted) {
-
-            CoroutineScope(Dispatchers.IO).launch {
-
-                val loc = getUserLocation(context)
-
+            CoroutineScope(Dispatchers.Main).launch {
+                val loc = withContext(Dispatchers.IO) { getUserLocation(context) }
                 loc?.let { userLoc ->
-
                     val distances = mutableMapOf<String, Int>()
-
                     for (camping in campings) {
-
-                        val coords = getCampingCoordinates(context, camping)
-
+                        val coords = withContext(Dispatchers.IO) {
+                            getCampingCoordinates(context, camping)
+                        }
                         coords?.let {
-
-                            val distance = calculateDistance(
-                                userLoc.latitude,
-                                userLoc.longitude,
-                                it.first,
-                                it.second
+                            distances[camping.id] = calculateDistance(
+                                userLoc.latitude, userLoc.longitude,
+                                it.first, it.second
                             )
-
-                            distances[camping.id] = distance
                         }
                     }
-
-                    campingDistances = distances
+                    campingDistances = distances.toMap()
                     userLocation = loc
                 }
             }
@@ -252,42 +242,52 @@ fun CampingsListScreen(campings: List<Camping>, onCampingClick: (String) -> Unit
     }
 
     LaunchedEffect(Unit) {
+        android.util.Log.d("CAMPING_DEBUG", "LaunchedEffect iniciado")
 
         if (!hasLocationPermission(context)) {
-
+            android.util.Log.d("CAMPING_DEBUG", "Sin permiso, lanzando dialogo...")
             permissionLauncher.launch(
                 arrayOf(
                     Manifest.permission.ACCESS_FINE_LOCATION,
                     Manifest.permission.ACCESS_COARSE_LOCATION
                 )
             )
-
         } else {
+            android.util.Log.d("CAMPING_DEBUG", "Permiso OK, obteniendo ubicacion...")
 
-            val loc = getUserLocation(context)
+            val loc = if (hasLocationPermission(context)) {
+                withContext(Dispatchers.IO) { getUserLocation(context) }
+            } else {
+                android.util.Log.d("CAMPING_DEBUG", "Permiso denegado en el segundo check")
+                null
+            }
 
+            android.util.Log.d("CAMPING_DEBUG", "Ubicacion obtenida: $loc")
             loc?.let { userLoc ->
+                android.util.Log.d("CAMPING_DEBUG", "Entrando al bucle, total campings: ${campings.size}")
 
                 val distances = mutableMapOf<String, Int>()
 
                 for (camping in campings) {
+                    android.util.Log.d("CAMPING_DEBUG", "Geocodificando: ${camping.nombre}")
 
-                    val coords = getCampingCoordinates(context, camping)
+                    val coords = withContext(Dispatchers.IO) {
+                        getCampingCoordinates(context, camping)
+                    }
+
+                    android.util.Log.d("CAMPING_DEBUG", "Coords de ${camping.nombre}: $coords")
 
                     coords?.let {
-
-                        val distance = calculateDistance(
-                            userLoc.latitude,
-                            userLoc.longitude,
-                            it.first,
-                            it.second
+                        distances[camping.id] = calculateDistance(
+                            userLoc.latitude, userLoc.longitude,
+                            it.first, it.second
                         )
-
-                        distances[camping.id] = distance
                     }
                 }
 
-                campingDistances = distances
+                android.util.Log.d("CAMPING_DEBUG", "Bucle terminado, distancias calculadas: ${distances.size}")
+
+                campingDistances = distances.toMap()
                 userLocation = loc
             }
         }
@@ -731,23 +731,22 @@ fun calculateDistance(userLat: Double, userLon: Double, campLat: Double, campLon
 
 
 suspend fun getCampingCoordinates(context: Context, camping: Camping): Pair<Double, Double>? {
-
     return try {
-
         val geocoder = Geocoder(context, Locale.getDefault())
-
-        val address = "${camping.direccion}, ${camping.municipio}, ${camping.provincia}"
+        val address = "${camping.municipio}, ${camping.provincia}, España"  // <-- simplifica la dirección
 
         val result = geocoder.getFromLocationName(address, 1)
 
+        android.util.Log.d("GEOCODER", "Camping: ${camping.nombre} | Address: $address | Result: ${result?.size}")
+
         if (!result.isNullOrEmpty()) {
-
             val location = result[0]
+            android.util.Log.d("GEOCODER", "Coords: ${location.latitude}, ${location.longitude}")
             Pair(location.latitude, location.longitude)
-
         } else null
 
     } catch (e: Exception) {
+        android.util.Log.e("GEOCODER", "Error en ${camping.nombre}: ${e.message}")
         null
     }
 }
