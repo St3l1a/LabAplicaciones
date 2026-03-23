@@ -79,61 +79,85 @@ class MainActivity : ComponentActivity() {
 }
 
 // -------------------- NAV GRAPH --------------------
+
 @Composable
 fun AppNavGraph() {
     val navController = rememberNavController()
     val context = LocalContext.current
-    val campings = remember { getData(context) }
+
+    var campings by remember { mutableStateOf<List<Camping>>(emptyList()) }
+    var isLoading by remember { mutableStateOf(true) }
+    var showSplash by remember { mutableStateOf(true) }  // <-- nuevo
+
+    LaunchedEffect(Unit) {
+        try {
+            val json = fetchData()
+            campings = parseData(json)
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+        isLoading = false
+    }
 
     Scaffold(
         floatingActionButton = {
-            FloatingActionButton(
-                onClick = { navController.navigate(Routes.FAVORITES) }
-            ) {
-                Icon(Icons.Default.Favorite, contentDescription = "Favorites")
+            if (!showSplash) {  // El FAB no aparece en la splash
+                FloatingActionButton(onClick = { navController.navigate(Routes.FAVORITES) }) {
+                    Icon(Icons.Default.Favorite, contentDescription = "Favorites")
+                }
             }
         }
     ) { padding ->
 
-        NavHost(
-            navController = navController,
-            startDestination = Routes.LIST,
-            modifier = Modifier.padding(padding)
-        ) {
-
-            composable(Routes.LIST) {
-                CampingsListScreen(
-                    campings = campings,
-                    onCampingClick = { id ->
-                        navController.navigate(Routes.detailRoute(id))
+        when {
+            // Mostrar splash mientras carga O durante los 2s mínimos
+            showSplash -> {
+                SplashScreen(
+                    onFinished = {
+                        if (!isLoading) showSplash = false
                     }
                 )
+                // Si la carga termina después del splash, quitar splash
+                LaunchedEffect(isLoading) {
+                    if (!isLoading && !showSplash) showSplash = false
+                }
             }
 
-            composable(
-                route = Routes.DETAIL,
-                arguments = listOf(navArgument("id") { type = NavType.StringType })
-            ) { backStackEntry ->
-
-                val id = backStackEntry.arguments?.getString("id")
-                val camping = campings.find { it.id == id }
-
-                CampingDetailScreen(
-                    camping = camping,
-                    onBack = { navController.popBackStack() }
-                )
+            isLoading -> {
+                // Por si la red tarda más de 2s, mostrar spinner
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    CircularProgressIndicator()
+                }
             }
 
-            composable(Routes.FAVORITES) {
-
-                FavoritesScreen(
-                    onCampingClick = { id ->
-                        navController.navigate(Routes.detailRoute(id))
+            else -> {
+                NavHost(
+                    navController = navController,
+                    startDestination = Routes.LIST,
+                    modifier = Modifier.padding(padding)
+                ) {
+                    composable(Routes.LIST) {
+                        CampingsListScreen(
+                            campings = campings,
+                            onCampingClick = { id -> navController.navigate(Routes.detailRoute(id)) }
+                        )
                     }
-                )
-
+                    composable(
+                        route = Routes.DETAIL,
+                        arguments = listOf(navArgument("id") { type = NavType.StringType })
+                    ) { backStackEntry ->
+                        val id = backStackEntry.arguments?.getString("id")
+                        val camping = campings.find { it.id == id }
+                        CampingDetailScreen(camping = camping, onBack = { navController.popBackStack() })
+                    }
+                    composable(Routes.FAVORITES) {
+                        FavoritesScreen(onCampingClick = { id -> navController.navigate(Routes.detailRoute(id)) })
+                    }
+                }
             }
-
         }
     }
 }
@@ -635,20 +659,36 @@ fun DetailItem(icon: androidx.compose.ui.graphics.vector.ImageVector, label: Str
 
 // -------------------- FUNCIONES DE DATOS --------------------
 
-fun getData(context: Context): List<Camping> {
+// Llamada HTTP — se ejecuta en hilo IO
+suspend fun fetchData(): String {
+    return withContext(Dispatchers.IO) {
+        val url = java.net.URL(
+            "https://dadesobertes.gva.es/api/3/action/datastore_search?id=2ddaf823-5da4-4459-aa57-5bfe9f9eb474"
+        )
+        val connection = (url.openConnection() as java.net.HttpURLConnection).apply {
+            requestMethod = "GET"
+            setRequestProperty("User-Agent", "Mozilla/5.0")
+            setRequestProperty("Accept", "application/json")
+            setRequestProperty("Accept-Language", "es")
+            connect()
+        }
+        if (connection.responseCode != java.net.HttpURLConnection.HTTP_OK) {
+            throw Exception("HTTP error: ${connection.responseCode}")
+        }
+        connection.inputStream.bufferedReader(Charsets.UTF_8).use { it.readText() }
+    }
+}
+
+// Parsea el JSON igual que antes
+fun parseData(json: String): List<Camping> {
     val list = mutableListOf<Camping>()
     try {
-        val json = context.resources.openRawResource(R.raw.datos)
-            .bufferedReader()
-            .use { it.readText() }
-
         val records = JSONObject(json)
             .getJSONObject("result")
             .getJSONArray("records")
 
         for (i in 0 until records.length()) {
             val o = records.getJSONObject(i)
-
             list.add(
                 Camping(
                     id = o.optString("_id"),
@@ -689,7 +729,6 @@ fun getData(context: Context): List<Camping> {
     } catch (e: Exception) {
         e.printStackTrace()
     }
-
     return list
 }
 
