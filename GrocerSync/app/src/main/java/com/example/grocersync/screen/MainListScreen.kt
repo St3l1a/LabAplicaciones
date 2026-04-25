@@ -24,7 +24,9 @@ data class Product(
 )
 
 @Composable
-fun MainListScreen() {
+fun MainListScreen(
+    listName: String
+)  {
 
     var search by remember { mutableStateOf("") }
 
@@ -55,8 +57,8 @@ fun MainListScreen() {
         ) {
 
             Text(
-                text = "My List",
-                style = MaterialTheme.typography.headlineMedium
+                text = listName,
+                style = MaterialTheme.typography.headlineLarge
             )
 
             Spacer(modifier = Modifier.height(16.dp))
