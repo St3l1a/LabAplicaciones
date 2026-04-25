@@ -1,4 +1,4 @@
-package com.example.grocersync
+package com.example.grocersync.database
 
 import androidx.room.Entity
 import androidx.room.PrimaryKey

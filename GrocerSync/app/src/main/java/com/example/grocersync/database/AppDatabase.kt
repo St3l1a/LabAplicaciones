@@ -1,10 +1,12 @@
-package com.example.grocersync.data
+package com.example.grocersync.database
 
 import android.content.Context
 import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
-import com.example.grocersync.*
+import com.example.grocersync.database.Item
+import com.example.grocersync.database.ShoppingDao
+import com.example.grocersync.database.ShoppingList
 
 @Database(
     entities = [ShoppingList::class, Item::class],

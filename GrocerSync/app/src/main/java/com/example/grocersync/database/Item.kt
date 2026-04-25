@@ -1,6 +1,10 @@
-package com.example.grocersync
+package com.example.grocersync.database
 
-import androidx.room.*
+import androidx.room.Entity
+import androidx.room.ForeignKey
+import androidx.room.Index
+import androidx.room.PrimaryKey
+import com.example.grocersync.database.ShoppingList
 
 @Entity(
     tableName = "items",
@@ -9,7 +13,7 @@ import androidx.room.*
             entity = ShoppingList::class,
             parentColumns = ["id"],
             childColumns = ["listId"],
-            onDelete = ForeignKey.CASCADE
+            onDelete = ForeignKey.Companion.CASCADE
         )
     ],
     indices = [Index(value = ["listId"])]

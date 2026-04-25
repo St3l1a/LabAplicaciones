@@ -1,5 +1,6 @@
 package com.example.grocersync.ui
 
+import android.R
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
@@ -16,7 +17,17 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.VerticalAlignmentLine
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import com.example.grocersync.ui.theme.GrocerSyncTheme
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.foundation.layout.Arrangement
 
 @Composable
 fun SelectListScreen(
@@ -73,29 +84,26 @@ fun SelectListScreen(
 
                 // 🔝 HEADER
                 Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .background(Color(0xFFDCE775))
-                        .padding(16.dp),
-                    verticalAlignment = Alignment.CenterVertically
                 ) {
-
-                    IconButton(onClick = { onBack() }) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = null)
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(Color(0xFFFFEB3B)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = "My Lists",
+                            style = MaterialTheme.typography.headlineLarge.copy(
+                                fontWeight = FontWeight.Bold
+                            )
+                        )
                     }
-
-                    Spacer(modifier = Modifier.width(8.dp))
-
-                    Text(
-                        text = "Other Lists",
-                        style = MaterialTheme.typography.headlineMedium
-                    )
                 }
 
                 Spacer(modifier = Modifier.height(24.dp))
 
                 // -------- ACTUAL --------
-                SectionDivider("Actual")
+                SectionDivider("Owned")
 
                 Spacer(modifier = Modifier.height(12.dp))
 
@@ -172,7 +180,21 @@ fun ListCard(text: String, onClick: () -> Unit) {
         modifier = Modifier
             .fillMaxWidth()
             .border(2.dp, Color.Black, RoundedCornerShape(16.dp))
+
     ) {
-        Text(text)
+        Text(
+            text = text,
+            color = Color.Black // aquí cambias el color del texto
+        )
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun ProfilePreview() {
+    GrocerSyncTheme {
+        SelectListScreen(onBack = { /* opcional */ },
+            onListSelected = { listName -> "Prueba"
+            })
     }
 }

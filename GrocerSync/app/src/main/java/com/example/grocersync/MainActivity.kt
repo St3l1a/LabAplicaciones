@@ -7,6 +7,7 @@ import androidx.activity.enableEdgeToEdge
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import com.example.grocersync.screen.AddItemScreen
 import com.example.grocersync.screen.LoginScreen
 import com.example.grocersync.ui.MainListScreen
 import com.example.grocersync.ui.SelectListScreen
@@ -51,9 +52,18 @@ class MainActivity : ComponentActivity() {
                     val listName = backStackEntry.arguments?.getString("listName") ?: ""
 
                     MainListScreen(
-                        listName = listName
+                        listName = listName,
+                        onAddClick = {
+                            navController.navigate("add_item")
+                        }
                     )
                 }
+
+                composable("add_item") {
+                    AddItemScreen()
+                }
+
+
             }
         }
     }

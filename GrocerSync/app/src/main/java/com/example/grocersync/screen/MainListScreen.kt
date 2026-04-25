@@ -1,5 +1,6 @@
 package com.example.grocersync.ui
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
@@ -14,8 +15,15 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import com.example.grocersync.R
+import com.example.grocersync.ui.theme.GrocerSyncTheme
 
 data class Product(
     val name: String,
@@ -25,8 +33,9 @@ data class Product(
 
 @Composable
 fun MainListScreen(
-    listName: String
-)  {
+    listName: String,
+    onAddClick: () -> Unit
+) {
 
     var search by remember { mutableStateOf("") }
 
@@ -36,49 +45,107 @@ fun MainListScreen(
         Product("200g ternera", "Ana • Hace 1 día", Color(0xFFE6C6E8))
     )
 
+
+
     Scaffold(
+        modifier = Modifier.fillMaxSize(),
+
         floatingActionButton = {
             FloatingActionButton(
-                onClick = { },
-                containerColor = Color(0xFF69F0AE),
+                onClick = { onAddClick() },
+                containerColor = Color(0xFFE6C6E8),
                 shape = CircleShape
             ) {
-                Icon(Icons.Default.Add, contentDescription = null)
+                Icon(
+                    imageVector = Icons.Default.Add,
+                    contentDescription = "Añadir"
+                )
             }
-        }
-    ) { padding ->
+        },
+        floatingActionButtonPosition = FabPosition.End
+    ) {padding ->
 
-        Column(
+        Box(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(padding)
-                .background(Color(0xFFEAF4FF))
-                .padding(16.dp)
-        ) {
+                .background(Color(0xFFCBE8FF))
+                .drawBehind {
 
-            Text(
-                text = listName,
-                style = MaterialTheme.typography.headlineLarge
-            )
+                    val colors = listOf(
+                        Color(0xFF90CAF9),
+                        Color(0xFFA5D6A7),
+                        Color(0xFFFFCC80),
+                        Color(0xFFCE93D8),
+                        Color(0xFF80DEEA),
+                        Color(0xFFFFAB91),
+                        Color(0xFFAED581)
+                    )
 
-            Spacer(modifier = Modifier.height(16.dp))
+                    val bubbles = listOf(
+                        Triple(size.width * 0.15f, size.height * 0.20f, 350f),
+                        Triple(size.width * 0.80f, size.height * 0.18f, 350f),
+                        Triple(size.width * 0.60f, size.height * 0.45f, 350f),
+                        Triple(size.width * 0.20f, size.height * 0.70f, 350f),
+                        Triple(size.width * 0.85f, size.height * 0.85f, 350f),
+                        Triple(size.width * 0.50f, size.height * 0.10f, 350f),
+                        Triple(size.width * 0.30f, size.height * 0.50f, 350f)
+                    )
 
-            OutlinedTextField(
-                value = search,
-                onValueChange = { search = it },
-                placeholder = { Text("Buscar") },
-                modifier = Modifier.fillMaxWidth()
-            )
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            LazyColumn {
-                items(products) { product ->
-                    ProductCard(product)
+                    bubbles.forEachIndexed { i, (x, y, r) ->
+                        drawCircle(
+                            color = colors[i % colors.size].copy(alpha = 0.35f),
+                            radius = r,
+                            center = Offset(x, y)
+                        )
+                    }
                 }
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(padding)
+                    .padding(16.dp)
+            ) {
+
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(Color(0xFFFFEB3B)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = listName,
+                        style = MaterialTheme.typography.headlineLarge.copy(
+                            fontWeight = FontWeight.Bold
+                        )
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                OutlinedTextField(
+                    value = search,
+                    onValueChange = { search = it },
+                    placeholder = { Text("Buscar") },
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(15.dp)
+                )
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    items(products) { product ->
+                        ProductCard(product)
+                    }
+                }
+
+
             }
+
         }
+
     }
+
 }
 
 @Composable
@@ -98,6 +165,24 @@ fun ProductCard(product: Product) {
             Text(product.info, style = MaterialTheme.typography.bodySmall)
         }
 
-        Icon(Icons.Default.AddCircle, contentDescription = null)
+        Image(
+            painter = painterResource(id = R.drawable.camara),
+            contentDescription = null,
+            modifier = Modifier.size(30.dp)
+        )
+    }
+
+}
+
+
+
+@Preview(showBackground = true)
+@Composable
+fun MainListPreview() {
+    GrocerSyncTheme {
+        MainListScreen(
+            listName = "Mi lista",
+            onAddClick = {}
+        )
     }
 }

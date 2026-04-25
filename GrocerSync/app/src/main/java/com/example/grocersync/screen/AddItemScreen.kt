@@ -1,9 +1,5 @@
-package com.example.grocersync
+package com.example.grocersync.screen
 
-import android.os.Bundle
-import androidx.activity.ComponentActivity
-import androidx.activity.compose.setContent
-import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -22,23 +18,24 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.draw.drawBehind
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
-
-
+import com.example.grocersync.R
 
 
 @Composable
-fun ProfileScreen() {
+fun AddItemScreen() {
 
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var name by remember { mutableStateOf("") }
+    var producto by remember { mutableStateOf("") }
+    var categoria by remember { mutableStateOf("") }
+    var cantidad by remember { mutableStateOf("") }
+
     Scaffold(
         modifier = Modifier.fillMaxSize()
     ) { padding ->
@@ -103,7 +100,7 @@ fun ProfileScreen() {
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
-                            text = "Profile",
+                            text = "Add Item",
                             style = MaterialTheme.typography.headlineLarge.copy(
                                 fontWeight = FontWeight.Bold
                             )
@@ -119,13 +116,32 @@ fun ProfileScreen() {
                     ) {
 
                         Image(
-                            painter = painterResource(id = R.drawable.usuario),
+                            painter = painterResource(id = R.drawable.camara),
                             contentDescription = null,
                             modifier = Modifier.size(200.dp)
                         )
 
 
                     }
+                    Button(
+                        onClick = { },
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Color.Gray,
+                            contentColor = Color.White
+                        )
+                    ) {
+                        Text("Escanear código")
+                    }
+                    Spacer(modifier = Modifier.height(20.dp))
+
+                    Text(
+                        text = "O",
+                        style = MaterialTheme.typography.headlineLarge.copy(
+                            fontWeight = FontWeight.Bold
+                        )
+                    )
                 }
 
                 Column( modifier = Modifier .fillMaxWidth() .weight(1f), verticalArrangement = Arrangement.Top ){
@@ -140,9 +156,9 @@ fun ProfileScreen() {
                             )
                     ) {
                         TextField(
-                            value = name,
-                            onValueChange = { name = it },
-                            label = { Text("Nombre y apellido") },
+                            value = producto,
+                            onValueChange = { producto = it },
+                            label = { Text("Producto") },
                             modifier = Modifier.fillMaxWidth(),
                             shape = RoundedCornerShape(12.dp),
                             colors = TextFieldDefaults.colors(
@@ -167,9 +183,34 @@ fun ProfileScreen() {
                             )
                     ) {
                         TextField(
-                            value = email,
-                            onValueChange = { email = it },
-                            label = { Text("Email") },
+                            value = categoria,
+                            onValueChange = { categoria = it },
+                            label = { Text("Categoria") },
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(12.dp),
+                            colors = TextFieldDefaults.colors(
+                                focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+                                unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+                                focusedIndicatorColor = Color.Transparent,
+                                unfocusedIndicatorColor = Color.Transparent
+                            )
+                        )
+                    }
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .border(
+                                width = 2.dp,
+                                color = Color.Black,
+                                shape = RoundedCornerShape(12.dp)
+                            )
+                    ) {
+                        TextField(
+                            value = cantidad,
+                            onValueChange = { cantidad = it },
+                            label = { Text("Cantidad") },
                             modifier = Modifier.fillMaxWidth(),
                             shape = RoundedCornerShape(12.dp),
                             colors = TextFieldDefaults.colors(
@@ -189,11 +230,11 @@ fun ProfileScreen() {
                         modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(12.dp),
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = Color.Red,
+                            containerColor = Color(246, 144, 252),
                             contentColor = Color.White
                         )
                     ) {
-                        Text("Cerrar sesión")
+                        Text("Aregar")
                     }
                 }
 
@@ -207,8 +248,8 @@ fun ProfileScreen() {
 
 @Preview(showBackground = true)
 @Composable
-fun ProfilePreview() {
+fun AddItemPreview() {
     GrocerSyncTheme {
-        ProfileScreen()
+        AddItemScreen()
     }
 }

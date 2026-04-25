@@ -21,7 +21,10 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.tooling.preview.Preview
 import com.example.grocersync.R
+import com.example.grocersync.ui.MainListScreen
+import com.example.grocersync.ui.theme.GrocerSyncTheme
 
 @Composable
 fun LoginScreen(
@@ -206,5 +209,16 @@ fun LoginScreen(
 
             }
         }
+    }
+}
+
+
+@Preview(showBackground = true, showSystemUi = true)
+@Composable
+fun LoginPreview() {
+    GrocerSyncTheme {
+        LoginScreen(
+            onLoginSuccess = {}
+        )
     }
 }
