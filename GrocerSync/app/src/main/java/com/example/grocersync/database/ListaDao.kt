@@ -49,4 +49,8 @@ interface ListaDao {
     @Transaction
     @Query("SELECT * FROM listas")
     suspend fun getListasConUsuarios(): List<ListaConUsuarios>
+    // 🔐 LOGIN
+    @Query("SELECT * FROM usuarios WHERE email = :email AND password = :password LIMIT 1")
+    suspend fun login(email: String, password: String): Usuario?
 }
+

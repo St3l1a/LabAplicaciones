@@ -17,4 +17,7 @@ class ListaRepository(private val dao: ListaDao) {
     suspend fun deleteItem(item: Item) = dao.deleteItem(item)
 
     suspend fun getListasConItems() = dao.getListasConItems()
+    suspend fun login(email: String, password: String): Usuario? {
+        return dao.login(email, password)
+    }
 }

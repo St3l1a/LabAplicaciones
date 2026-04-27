@@ -19,12 +19,18 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import com.example.grocersync.R
+import com.example.grocersync.database.AppDatabase
+import com.example.grocersync.database.ListaRepository
 import com.example.grocersync.ui.MainListScreen
 import com.example.grocersync.ui.theme.GrocerSyncTheme
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 @Composable
 fun LoginScreen(
@@ -32,6 +38,14 @@ fun LoginScreen(
 ) {
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
+    var errorMessage by remember { mutableStateOf<String?>(null) }
+
+    val scope = rememberCoroutineScope()
+    val context = LocalContext.current
+
+    // Instanciamos la base de datos (suficiente para un prototipo)
+    val db = remember { AppDatabase.getDatabase(context) }
+    val repository = remember { ListaRepository(db.listaDao()) }
 
     Scaffold(
         modifier = Modifier.fillMaxSize()
@@ -184,10 +198,31 @@ fun LoginScreen(
                     Spacer(modifier = Modifier.height(16.dp))
 
                     // 🔘 LOGIN
+                    // Mensaje de error
+                    errorMessage?.let {
+                        Text(
+                            text = it,
+                            color = MaterialTheme.colorScheme.error,
+                            modifier = Modifier.padding(vertical = 8.dp)
+                        )
+                    }
+
+                    // Botón Login
                     Button(
                         onClick = {
-                            if (email.isNotBlank() && password.isNotBlank()) {
-                                onLoginSuccess();
+                            if (email.isBlank() || password.isBlank()) {
+                                errorMessage = "Completá todos los campos"
+                                return@Button
+                            }
+                            scope.launch {
+                                val usuario = withContext(Dispatchers.IO) {
+                                    repository.login(email, password)
+                                }
+                                if (usuario != null) {
+                                    onLoginSuccess()
+                                } else {
+                                    errorMessage = "Email o contraseña incorrectos"
+                                }
                             }
                         },
                         modifier = Modifier.fillMaxWidth(),
@@ -196,8 +231,9 @@ fun LoginScreen(
                         Text("Iniciar sesión")
                     }
 
+                    // Crear cuenta (opcional)
                     TextButton(
-                        onClick = { },
+                        onClick = { /* Registrar usuario (próximo paso) */ },
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Text("Crear cuenta")
