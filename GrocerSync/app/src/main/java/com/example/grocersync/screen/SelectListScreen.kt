@@ -29,13 +29,19 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.foundation.layout.Arrangement
 
+
+
+
 @Composable
 fun SelectListScreen(
     onBack: () -> Unit = {},
-    onListSelected: (String) -> Unit
+    onListSelected: (String) -> Unit,
+
+
 ) {
 
     val currentList = "My List"
+    var showDialog by remember { mutableStateOf(false) }
 
     val otherLists = listOf("Family", "Roma Trip", "Fallas")
 
@@ -133,7 +139,9 @@ fun SelectListScreen(
                             .background(Color(0xFF69F0AE), CircleShape)
                             .padding(6.dp)
                     ) {
-                        Icon(Icons.Default.Add, contentDescription = null)
+                        IconButton(onClick = { showDialog = true }) {
+                            Icon(Icons.Default.Add, contentDescription = "Añadir")
+                        }
                     }
                 }
 
@@ -153,6 +161,13 @@ fun SelectListScreen(
             }
         }
     }
+    EmailDialog(
+        showDialog = showDialog,
+        onDismiss = { showDialog = false },
+        onAccept = { email ->
+            println("Email introducido: $email")
+        }
+    )
 }
 
 @Composable
@@ -185,6 +200,53 @@ fun ListCard(text: String, onClick: () -> Unit) {
         Text(
             text = text,
             color = Color.Black // aquí cambias el color del texto
+        )
+    }
+}
+
+@Composable
+fun EmailDialog(
+    showDialog: Boolean,
+    onDismiss: () -> Unit,
+    onAccept: (String) -> Unit
+) {
+    var email by remember { mutableStateOf("") }
+
+    if (showDialog) {
+        AlertDialog(
+            onDismissRequest = { onDismiss() },
+
+            title = {
+                Text("Añadir miembro")
+            },
+
+            text = {
+                OutlinedTextField(
+                    value = email,
+                    onValueChange = { email = it },
+                    placeholder = { Text("correo@email.com") },
+                    singleLine = true
+                )
+            },
+
+            confirmButton = {
+                Button(
+                    onClick = {
+                        onAccept(email)
+                        onDismiss()
+                    }
+                ) {
+                    Text("Aceptar")
+                }
+            },
+
+            dismissButton = {
+                Button(
+                    onClick = { onDismiss() }
+                ) {
+                    Text("Cancelar")
+                }
+            }
         )
     }
 }
