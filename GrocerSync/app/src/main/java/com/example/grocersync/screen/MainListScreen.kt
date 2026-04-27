@@ -34,7 +34,8 @@ data class Product(
 @Composable
 fun MainListScreen(
     listName: String,
-    onAddClick: () -> Unit
+    onAddClick: () -> Unit,
+    onStatsClick: () -> Unit
 ) {
 
     var search by remember { mutableStateOf("") }
@@ -51,15 +52,34 @@ fun MainListScreen(
         modifier = Modifier.fillMaxSize(),
 
         floatingActionButton = {
-            FloatingActionButton(
-                onClick = { onAddClick() },
-                containerColor = Color(0xFFE6C6E8),
-                shape = CircleShape
+            Column(
+                horizontalAlignment = Alignment.End,
+                verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                Icon(
-                    imageVector = Icons.Default.Add,
-                    contentDescription = "Añadir"
-                )
+                // 📊 Botón estadísticas
+                FloatingActionButton(
+                    onClick = { onStatsClick() },
+                    containerColor = Color(0xFFFFEB3B),
+                    shape = CircleShape
+                ) {
+                    Icon(
+                        painter = painterResource(id = R.drawable.graph),
+                        contentDescription = "Estadísticas",
+                        modifier = Modifier.size(24.dp)
+                    )
+                }
+
+                // ➕ Botón añadir (el que ya tenías)
+                FloatingActionButton(
+                    onClick = { onAddClick() },
+                    containerColor = Color(0xFFE6C6E8),
+                    shape = CircleShape
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Add,
+                        contentDescription = "Añadir"
+                    )
+                }
             }
         },
         floatingActionButtonPosition = FabPosition.End
@@ -182,7 +202,9 @@ fun MainListPreview() {
     GrocerSyncTheme {
         MainListScreen(
             listName = "Mi lista",
-            onAddClick = {}
+            onAddClick = {},
+            onStatsClick = {}
+
         )
     }
 }

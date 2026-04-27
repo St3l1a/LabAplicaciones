@@ -9,6 +9,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.example.grocersync.screen.AddItemScreen
 import com.example.grocersync.screen.LoginScreen
+import com.example.grocersync.screen.StatisticsScreen
 import com.example.grocersync.ui.MainListScreen
 import com.example.grocersync.ui.SelectListScreen
 
@@ -55,12 +56,18 @@ class MainActivity : ComponentActivity() {
                         listName = listName,
                         onAddClick = {
                             navController.navigate("add_item")
+                        },
+                        onStatsClick = {
+                            navController.navigate("stats") // o lo que quieras hacer
                         }
                     )
                 }
 
                 composable("add_item") {
                     AddItemScreen()
+                }
+                composable("stats") {
+                    StatisticsScreen()
                 }
 
 
