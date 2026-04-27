@@ -1,5 +1,10 @@
 package com.example.grocersync.screen
 
+import android.content.Context
+import android.net.Uri
+import android.util.Log
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -21,9 +26,14 @@ import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.core.content.FileProvider
+import coil.compose.rememberAsyncImagePainter
 import com.example.grocersync.R
+import com.google.android.engage.food.datamodel.ProductEntity
+import java.io.File
 
 
 @Composable
@@ -36,6 +46,40 @@ fun AddItemScreen() {
     var categoria by remember { mutableStateOf("") }
     var cantidad by remember { mutableStateOf("") }
 
+    val context = LocalContext.current
+    var imageUri by remember { mutableStateOf<Uri?>(null) }
+    val pendingUri = remember { mutableStateOf<Uri?>(null) }
+
+    val launcher = rememberLauncherForActivityResult(
+        ActivityResultContracts.TakePicture()
+    ) { success ->
+        if (success) {
+            // Ahora el archivo ya existe → asignamos la URI al estado
+            imageUri = pendingUri.value
+        } else {
+            // Opcional: mostrar un error o limpiar
+            imageUri = null
+        }
+    }
+
+
+    fun openCamera() {
+        val uri = createImageUri(context)
+        pendingUri.value = uri   // guardamos para usarla en el callback
+        launcher.launch(uri)     // NO tocamos imageUri aún
+    }
+
+
+
+    val permissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        Log.d("CAMERA_LOG", "permission=$isGranted")
+
+        if (isGranted) {
+            openCamera()
+        }
+    }
     Scaffold(
         modifier = Modifier.fillMaxSize()
     ) { padding ->
@@ -109,32 +153,35 @@ fun AddItemScreen() {
 
                     Spacer(modifier = Modifier.height(20.dp))
 
+
                     // 🖼️ IMÁGENES
-                    Row(
+                    Box(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceEvenly
+                        contentAlignment = Alignment.Center
                     ) {
-
-                        Image(
-                            painter = painterResource(id = R.drawable.camara),
-                            contentDescription = null,
-                            modifier = Modifier.size(200.dp)
-                        )
-
-
+                        if (imageUri != null) {
+                            Image(
+                                painter = rememberAsyncImagePainter(imageUri),
+                                contentDescription = null,
+                                modifier = Modifier.size(200.dp)
+                            )
+                        } else {
+                            Image(
+                                painter = painterResource(id = R.drawable.camara),
+                                contentDescription = null,
+                                modifier = Modifier.size(200.dp)
+                            )
+                        }
                     }
                     Button(
-                        onClick = { },
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(12.dp),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = Color.Gray,
-                            contentColor = Color.White
-                        )
+                        onClick = {
+                            permissionLauncher.launch(android.Manifest.permission.CAMERA)
+                        },
+                        modifier = Modifier.fillMaxWidth()
                     ) {
                         Text("Escanear código")
                     }
-                    Spacer(modifier = Modifier.height(20.dp))
+
 
                     Text(
                         text = "O",
@@ -226,7 +273,9 @@ fun AddItemScreen() {
 
                     // 🔘 LOGIN
                     Button(
-                        onClick = { },
+                        onClick = {
+
+                        },
                         modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(12.dp),
                         colors = ButtonDefaults.buttonColors(
@@ -252,4 +301,20 @@ fun AddItemPreview() {
     GrocerSyncTheme {
         AddItemScreen()
     }
+}
+
+fun createImageUri(context: Context): Uri {
+    val imagesDir = File(context.cacheDir, "images")
+    if (!imagesDir.exists()) imagesDir.mkdirs()
+
+    val file = File(
+        imagesDir,
+        "photo_${System.currentTimeMillis()}.jpg"
+    )
+
+    return FileProvider.getUriForFile(
+        context,
+        "${context.packageName}.provider",
+        file
+    )
 }
