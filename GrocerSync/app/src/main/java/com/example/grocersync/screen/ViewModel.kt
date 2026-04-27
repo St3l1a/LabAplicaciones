@@ -20,7 +20,7 @@ class ListaViewModel(application: Application) : AndroidViewModel(application) {
                     fechaCreacion = System.currentTimeMillis().toString()
                 )
             )
-        }
+        }//hola
     }
 
     fun insertarItem(item: Item) {
