@@ -1,0 +1,72 @@
+{
+  "listas": [
+    {
+      "id": 1,
+      "nombre": "Compra semanal",
+      "creador": "Estrella",
+      "fechaCreacion": "2026-04-27",
+      "items": [
+        {
+          "id": 101,
+          "nombre": "Leche",
+          "cantidad": 2,
+          "categoria": "Lácteos",
+          "comprado": false,
+          "nota": "Semidesnatada"
+        },
+        {
+          "id": 102,
+          "nombre": "Pan",
+          "cantidad": 1,
+          "categoria": "Panadería",
+          "comprado": true,
+          "nota": "Integral"
+        },
+        {
+          "id": 103,
+          "nombre": "Huevos",
+          "cantidad": 12,
+          "categoria": "Lácteos",
+          "comprado": false,
+          "nota": ""
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "nombre": "Cena con amigos",
+      "creador": "Alex",
+      "fechaCreacion": "2026-04-26",
+      "items": [
+        {
+          "id": 201,
+          "nombre": "Pizza",
+          "cantidad": 3,
+          "categoria": "Congelados",
+          "comprado": false,
+          "nota": "Variadas"
+        },
+        {
+          "id": 202,
+          "nombre": "Refrescos",
+          "cantidad": 6,
+          "categoria": "Bebidas",
+          "comprado": false,
+          "nota": "Coca-Cola y Fanta"
+        }
+      ]
+    }
+  ],
+  "usuarios": [
+    {
+      "id": 1,
+      "nombre": "Estrella",
+      "email": "estrella@email.com"
+    },
+    {
+      "id": 2,
+      "nombre": "Alex",
+      "email": "alex@email.com"
+    }
+  ]
+}

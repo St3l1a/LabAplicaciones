@@ -4,18 +4,20 @@ import android.content.Context
 import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
-import com.example.grocersync.database.Item
-import com.example.grocersync.database.ShoppingDao
-import com.example.grocersync.database.ShoppingList
 
 @Database(
-    entities = [ShoppingList::class, Item::class],
+    entities = [
+        Lista::class,
+        Item::class,
+        Usuario::class,
+        ListaUsuarioCrossRef::class
+    ],
     version = 1,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
 
-    abstract fun shoppingDao(): ShoppingDao
+    abstract fun listaDao(): ListaDao
 
     companion object {
         @Volatile
@@ -23,12 +25,13 @@ abstract class AppDatabase : RoomDatabase() {
 
         fun getDatabase(context: Context): AppDatabase {
             return INSTANCE ?: synchronized(this) {
+
                 val instance = Room.databaseBuilder(
                     context.applicationContext,
                     AppDatabase::class.java,
-                    "shopping_db"
+                    "grocersync_db"
                 )
-                    .fallbackToDestructiveMigration() // 🔥 útil mientras desarrollas
+                    .fallbackToDestructiveMigration() // ⚠️ borra datos si cambias versión
                     .build()
 
                 INSTANCE = instance
