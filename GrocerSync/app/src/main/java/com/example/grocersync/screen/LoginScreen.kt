@@ -22,6 +22,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.tooling.preview.Preview
 import com.example.grocersync.R
 import com.example.grocersync.database.AppDatabase
@@ -179,6 +180,7 @@ fun LoginScreen(
                                 color = Color.Black,
                                 shape = RoundedCornerShape(12.dp)
                             )
+
                     ) {
                         TextField(
                             value = password,
@@ -186,7 +188,8 @@ fun LoginScreen(
                             label = { Text("Password") },
                             modifier = Modifier.fillMaxWidth(),
                             shape = RoundedCornerShape(12.dp),
-                            colors = TextFieldDefaults.colors(
+                            visualTransformation = PasswordVisualTransformation(),
+                                    colors = TextFieldDefaults.colors(
                                 focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
                                 unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
                                 focusedIndicatorColor = Color.Transparent,
