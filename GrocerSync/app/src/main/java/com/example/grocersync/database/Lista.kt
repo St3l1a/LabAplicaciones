@@ -8,6 +8,6 @@ data class Lista(
     @PrimaryKey(autoGenerate = true)
     val id: Int = 0,
     val nombre: String,
-    val creador: String,
-    val fechaCreacion: String
+    val fechaCreacion: String,
+    val idCreador: Int
 )

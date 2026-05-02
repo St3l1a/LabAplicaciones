@@ -20,4 +20,10 @@ class ListaRepository(private val dao: ListaDao) {
     suspend fun login(email: String, password: String): Usuario? {
         return dao.login(email, password)
     }
+
+    suspend fun obtenerListasDeUsuario(dao: ListaDao, usuarioId: Int): List<Lista> {
+        val usuarioConListas = dao.getUsuarioConListas(usuarioId)
+        return usuarioConListas.listas
+    }
+
 }

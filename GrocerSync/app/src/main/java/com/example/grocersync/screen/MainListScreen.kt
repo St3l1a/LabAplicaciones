@@ -1,16 +1,20 @@
 package com.example.grocersync.ui
 
+import android.util.Log
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.AddCircle
+import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -18,11 +22,15 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.example.grocersync.R
+import com.example.grocersync.database.AppDatabase
+import com.example.grocersync.database.Lista
+import com.example.grocersync.database.ListaRepository
 import com.example.grocersync.ui.theme.GrocerSyncTheme
 
 data class Product(
@@ -31,22 +39,27 @@ data class Product(
     val color: Color
 )
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun MainListScreen(
-    listName: String,
+fun SelectListScreen(
+    usuarioId: Int,
+    onListSelected: (Int) -> Unit,
+    onBack: () -> Unit = {},
     onAddClick: () -> Unit,
     onStatsClick: () -> Unit
 ) {
+    val context = LocalContext.current
+    val dao = remember { AppDatabase.getDatabase(context).listaDao() }
+    val db = remember { AppDatabase.getDatabase(context) }
+    val repository = remember { ListaRepository(db.listaDao()) }
 
-    var search by remember { mutableStateOf("") }
+    // Estado donde guardaremos las listas del usuario
+    var listas by remember { mutableStateOf<List<Lista>>(emptyList()) }
 
-    val products = listOf(
-        Product("Leche entera 1L", "Juan • Hace 2 horas", Color(0xFFE6C6E8)),
-        Product("6 Plátanos", "María • Hace 8 horas", Color(0xFFE6C6E8)),
-        Product("200g ternera", "Ana • Hace 1 día", Color(0xFFE6C6E8))
-    )
-
-
+    LaunchedEffect(usuarioId) {
+        val usuarioConListas = dao.getUsuarioConListas(usuarioId)
+        listas = repository.obtenerListasDeUsuario(dao, usuarioId)
+    }
 
     Scaffold(
         modifier = Modifier.fillMaxSize(),
@@ -56,7 +69,6 @@ fun MainListScreen(
                 horizontalAlignment = Alignment.End,
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                // 📊 Botón estadísticas
                 FloatingActionButton(
                     onClick = { onStatsClick() },
                     containerColor = Color(0xFFFFEB3B),
@@ -69,7 +81,6 @@ fun MainListScreen(
                     )
                 }
 
-                // ➕ Botón añadir (el que ya tenías)
                 FloatingActionButton(
                     onClick = { onAddClick() },
                     containerColor = Color(0xFFE6C6E8),
@@ -83,7 +94,7 @@ fun MainListScreen(
             }
         },
         floatingActionButtonPosition = FabPosition.End
-    ) {padding ->
+    ) { padding ->
 
         Box(
             modifier = Modifier
@@ -126,46 +137,29 @@ fun MainListScreen(
                     .padding(padding)
                     .padding(16.dp)
             ) {
-//hola
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .background(Color(0xFFFFEB3B)),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = listName,
-                        style = MaterialTheme.typography.headlineLarge.copy(
-                            fontWeight = FontWeight.Bold
-                        )
-                    )
-                }
 
-                Spacer(modifier = Modifier.height(16.dp))
-
-                OutlinedTextField(
-                    value = search,
-                    onValueChange = { search = it },
-                    placeholder = { Text("Buscar") },
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(15.dp)
+                Text(
+                    text = "Selecciona una lista",
+                    style = MaterialTheme.typography.headlineSmall
                 )
 
                 Spacer(modifier = Modifier.height(16.dp))
 
                 LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    items(products) { product ->
-                        ProductCard(product)
+                    items(listas) { lista ->
+                        ListaCard(
+                            nombre = lista.nombre,
+                            fecha = lista.fechaCreacion,
+                            onClick = { onListSelected(lista.id) }
+                        )
                     }
                 }
 
+                Spacer(modifier = Modifier.height(16.dp))
 
             }
-
         }
-
     }
-
 }
 
 @Composable
@@ -194,17 +188,34 @@ fun ProductCard(product: Product) {
 
 }
 
-
-
-@Preview(showBackground = true)
 @Composable
-fun MainListPreview() {
-    GrocerSyncTheme {
-        MainListScreen(
-            listName = "Mi lista",
-            onAddClick = {},
-            onStatsClick = {}
+fun ListaCard(nombre: String, fecha: String, onClick: () -> Unit) {
+    val randomColor = Color(
+        red = (0..255).random(),
+        green = (0..255).random(),
+        blue = (0..255).random()
+    )
 
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(randomColor, RoundedCornerShape(16.dp))
+            .border(2.dp, Color.Black, RoundedCornerShape(16.dp))
+            .padding(16.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Text(nombre)
+            Text("Creada el $fecha",style = MaterialTheme.typography.bodySmall)
+        }
+        Image(
+            painter = painterResource(id = R.drawable.camara),
+            contentDescription = null,
+            modifier = Modifier.size(30.dp)
         )
     }
 }
+

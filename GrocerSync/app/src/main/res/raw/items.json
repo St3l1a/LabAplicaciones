@@ -1,0 +1,47 @@
+[
+  {
+    "id": 1,
+    "listaId": 1,
+    "nombre": "Leche",
+    "cantidad": 2,
+    "categoria": "Lácteos",
+    "comprado": false,
+    "nota": "Desnatada"
+  },
+  {
+    "id": 2,
+    "listaId": 1,
+    "nombre": "Pan",
+    "cantidad": 1,
+    "categoria": "Panadería",
+    "comprado": true,
+    "nota": ""
+  },
+  {
+    "id": 3,
+    "listaId": 2,
+    "nombre": "Refrescos",
+    "cantidad": 6,
+    "categoria": "Bebidas",
+    "comprado": false,
+    "nota": "Coca-Cola Zero"
+  },
+  {
+    "id": 4,
+    "listaId": 3,
+    "nombre": "Leche",
+    "cantidad": 2,
+    "categoria": "Lácteos",
+    "comprado": false,
+    "nota": "Desnatada"
+  },
+  {
+    "id": 5,
+    "listaId": 4,
+    "nombre": "Leche",
+    "cantidad": 2,
+    "categoria": "Lácteos",
+    "comprado": false,
+    "nota": "Desnatada"
+  }
+]

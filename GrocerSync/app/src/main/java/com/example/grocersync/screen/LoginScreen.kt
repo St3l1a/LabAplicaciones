@@ -27,7 +27,6 @@ import androidx.compose.ui.tooling.preview.Preview
 import com.example.grocersync.R
 import com.example.grocersync.database.AppDatabase
 import com.example.grocersync.database.ListaRepository
-import com.example.grocersync.ui.MainListScreen
 import com.example.grocersync.ui.theme.GrocerSyncTheme
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -35,11 +34,12 @@ import kotlinx.coroutines.withContext
 
 @Composable
 fun LoginScreen(
-    onLoginSuccess: () -> Unit
+    onLoginSuccess:  (Int) -> Unit
 ) {
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var errorMessage by remember { mutableStateOf<String?>(null) }
+
 
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
@@ -222,7 +222,9 @@ fun LoginScreen(
                                     repository.login(email, password)
                                 }
                                 if (usuario != null) {
-                                    onLoginSuccess()
+                                    withContext(Dispatchers.Main) {
+                                        onLoginSuccess(usuario.id)
+                                    }
                                 } else {
                                     errorMessage = "Email o contraseña incorrectos"
                                 }
