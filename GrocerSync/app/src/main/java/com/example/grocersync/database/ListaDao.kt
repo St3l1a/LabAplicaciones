@@ -43,6 +43,10 @@ interface ListaDao {
 
     @Insert suspend fun insertCrossRef(crossRef: ListaUsuarioCrossRef)
 
+    @Query("DELETE FROM ListaUsuarioCrossRef")
+    suspend fun deleteAllCrossRefs()
+
+
     // 🔹 USUARIOS
 
 

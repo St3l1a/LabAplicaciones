@@ -15,6 +15,7 @@ import com.example.grocersync.database.Lista
 import com.example.grocersync.database.ListaDao
 import com.example.grocersync.database.ListaUsuarioCrossRef
 import com.example.grocersync.database.Usuario
+import com.example.grocersync.database.UsuarioConListas
 import com.example.grocersync.screen.AddItemScreen
 import com.example.grocersync.screen.LoginScreen
 import com.example.grocersync.screen.StatisticsScreen
@@ -125,6 +126,7 @@ class MainActivity : ComponentActivity() {
         val dao = db.listaDao()
 
         dao.deleteAllListas()
+        dao.deleteAllCrossRefs()   // ← IMPORTANTE
 
         try {
             // Leer desde res/raw/users.json
@@ -140,7 +142,7 @@ class MainActivity : ComponentActivity() {
                 dao.insertLista(it)
                 asignarUsuarioALista(dao, it.id, it.idCreador)
             }
-            Log.d("DB", "${listas.size} listas insertados desde JSON")
+            Log.d("DB LISTAS", "${listas.size} listas insertados desde JSON")
         } catch (e: Exception) {
             Log.e("DB", "Error cargando listas desde JSON", e)
         }
@@ -173,7 +175,6 @@ class MainActivity : ComponentActivity() {
     suspend fun asignarUsuarioALista(dao: ListaDao, listaId: Int, usuarioId: Int) {
         dao.insertCrossRef(
             ListaUsuarioCrossRef(listaId, usuarioId)
-
         )
 
 

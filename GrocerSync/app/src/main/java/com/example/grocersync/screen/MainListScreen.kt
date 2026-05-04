@@ -39,6 +39,7 @@ data class Product(
     val color: Color
 )
 
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SelectListScreen(
@@ -60,6 +61,8 @@ fun SelectListScreen(
         val usuarioConListas = dao.getUsuarioConListas(usuarioId)
         listas = repository.obtenerListasDeUsuario(dao, usuarioId)
     }
+
+
 
     Scaffold(
         modifier = Modifier.fillMaxSize(),
@@ -163,44 +166,24 @@ fun SelectListScreen(
 }
 
 @Composable
-fun ProductCard(product: Product) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .background(product.color, RoundedCornerShape(16.dp))
-            .border(2.dp, Color.Black, RoundedCornerShape(16.dp))
-            .padding(16.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-
-        Column {
-            Text(product.name)
-            Text(product.info, style = MaterialTheme.typography.bodySmall)
-        }
-
-        Image(
-            painter = painterResource(id = R.drawable.camara),
-            contentDescription = null,
-            modifier = Modifier.size(30.dp)
-        )
-    }
-
-}
-
-@Composable
 fun ListaCard(nombre: String, fecha: String, onClick: () -> Unit) {
-    val randomColor = Color(
-        red = (0..255).random(),
-        green = (0..255).random(),
-        blue = (0..255).random()
+    val pastelColors = listOf(
+        Color(0xFFFFC1CC), // Rosa pastel
+        Color(0xFFFFE4B5), // Melocotón suave
+        Color(0xFFFFF4B2), // Amarillo pastel
+        Color(0xFFC8E6C9), // Verde menta suave
+        Color(0xFFB3E5FC), // Azul cielo pastel
+        Color(0xFFD1C4E9), // Lavanda pastel
+        Color(0xFFFFD8B1), // Naranja crema
+        Color(0xFFE1F5FE), // Azul hielo
+        Color(0xFFF8BBD0), // Rosa algodón
+        Color(0xFFDCEDC8)  // Verde lima pastel
     )
 
-
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .background(randomColor, RoundedCornerShape(16.dp))
+            .background(pastelColors.random(), RoundedCornerShape(16.dp))
             .border(2.dp, Color.Black, RoundedCornerShape(16.dp))
             .padding(16.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
