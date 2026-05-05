@@ -55,7 +55,6 @@ fun SelectListScreen(
                 .padding(padding)
                 .background(Color(0xFFCBE8FF))
                 .drawBehind {
-
                     val colors = listOf(
                         Color(0xFF90CAF9),
                         Color(0xFFA5D6A7),
@@ -203,54 +202,6 @@ fun ListCard(text: String, onClick: () -> Unit) {
         )
     }
 }
-
-@Composable
-fun EmailDialog(
-    showDialog: Boolean,
-    onDismiss: () -> Unit,
-    onAccept: (String) -> Unit
-) {
-    var email by remember { mutableStateOf("") }
-
-    if (showDialog) {
-        AlertDialog(
-            onDismissRequest = { onDismiss() },
-
-            title = {
-                Text("Añadir miembro")
-            },
-
-            text = {
-                OutlinedTextField(
-                    value = email,
-                    onValueChange = { email = it },
-                    placeholder = { Text("correo@email.com") },
-                    singleLine = true
-                )
-            },
-
-            confirmButton = {
-                Button(
-                    onClick = {
-                        onAccept(email)
-                        onDismiss()
-                    }
-                ) {
-                    Text("Aceptar")
-                }
-            },
-
-            dismissButton = {
-                Button(
-                    onClick = { onDismiss() }
-                ) {
-                    Text("Cancelar")
-                }
-            }
-        )
-    }
-}
-
 @Preview(showBackground = true)
 @Composable
 fun ProfilePreview() {

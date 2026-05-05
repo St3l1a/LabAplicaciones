@@ -1,0 +1,8 @@
+[
+  { "listaId": 1, "usuarioId": 1 },
+  { "listaId": 1, "usuarioId": 2 },
+  { "listaId": 1, "usuarioId": 3 },
+  { "listaId": 2, "usuarioId": 2 },
+  { "listaId": 2, "usuarioId": 4 },
+  { "listaId": 3, "usuarioId": 3 }
+]

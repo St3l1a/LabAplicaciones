@@ -2,19 +2,19 @@
   {
     "id": 1,
     "nombre": "Compra semanal",
-    "idCreador": "1",
+    "idCreador": 1,
     "fechaCreacion": "2024-05-01"
   },
   {
     "id": 2,
     "nombre": "Fiesta cumpleaños",
-    "idCreador": "2",
+    "idCreador":2,
     "fechaCreacion": "2024-04-20"
   },
   {
     "id": 3,
     "nombre": "Fiesta",
-    "idCreador": "1",
+    "idCreador": 1,
     "fechaCreacion": "2024-04-20"
   },
   {
@@ -22,6 +22,9 @@
     "nombre": "Idk",
     "idCreador": "1",
     "fechaCreacion": "2024-04-20"
-  }
+  }, { "id": 5, "nombre": "Compra semanal", "fechaCreacion": "2026-05-01", "idCreador": 1 },
+  { "id": 6, "nombre": "Fiesta", "fechaCreacion": "2026-05-02", "idCreador": 2 },
+  { "id": 7, "nombre": "Vacaciones", "fechaCreacion": "2026-05-03", "idCreador": 3 },
+  { "id": 8, "nombre": "Lista vacía", "fechaCreacion": "2026-05-04", "idCreador": 4 }
 
 ]

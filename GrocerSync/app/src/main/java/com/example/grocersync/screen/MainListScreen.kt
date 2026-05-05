@@ -1,20 +1,15 @@
 package com.example.grocersync.ui
 
-import android.util.Log
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.AddCircle
-import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.Face
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -23,22 +18,11 @@ import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import com.example.grocersync.R
 import com.example.grocersync.database.AppDatabase
 import com.example.grocersync.database.Lista
 import com.example.grocersync.database.ListaRepository
-import com.example.grocersync.ui.theme.GrocerSyncTheme
-
-data class Product(
-    val name: String,
-    val info: String,
-    val color: Color
-)
-
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -50,53 +34,35 @@ fun SelectListScreen(
     onStatsClick: () -> Unit
 ) {
     val context = LocalContext.current
-    val dao = remember { AppDatabase.getDatabase(context).listaDao() }
     val db = remember { AppDatabase.getDatabase(context) }
-    val repository = remember { ListaRepository(db.listaDao()) }
+    val dao = remember { db.listaDao() }
+    val repository = remember { ListaRepository(dao) }
 
-    // Estado donde guardaremos las listas del usuario
+    var showDialog by remember { mutableStateOf(false) }
+
     var listas by remember { mutableStateOf<List<Lista>>(emptyList()) }
 
+    // 🔥 MAPA GLOBAL DE MIEMBROS (SOLUCIÓN REAL)
+    var miembrosPorLista by remember { mutableStateOf<Map<Int, List<String>>>(emptyMap()) }
+
+    // Cargar listas
     LaunchedEffect(usuarioId) {
-        val usuarioConListas = dao.getUsuarioConListas(usuarioId)
         listas = repository.obtenerListasDeUsuario(dao, usuarioId)
     }
 
+    // 🔥 Cargar TODOS los miembros UNA sola vez
+    LaunchedEffect(listas) {
+        val map = mutableMapOf<Int, List<String>>()
 
+        listas.forEach { lista ->
+            map[lista.id] = repository.obtenerMiembrosDeLista(dao, lista.id)
+        }
+
+        miembrosPorLista = map
+    }
 
     Scaffold(
-        modifier = Modifier.fillMaxSize(),
-
-        floatingActionButton = {
-            Column(
-                horizontalAlignment = Alignment.End,
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                FloatingActionButton(
-                    onClick = { onStatsClick() },
-                    containerColor = Color(0xFFFFEB3B),
-                    shape = CircleShape
-                ) {
-                    Icon(
-                        painter = painterResource(id = R.drawable.graph),
-                        contentDescription = "Estadísticas",
-                        modifier = Modifier.size(24.dp)
-                    )
-                }
-
-                FloatingActionButton(
-                    onClick = { onAddClick() },
-                    containerColor = Color(0xFFE6C6E8),
-                    shape = CircleShape
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Add,
-                        contentDescription = "Añadir"
-                    )
-                }
-            }
-        },
-        floatingActionButtonPosition = FabPosition.End
+        modifier = Modifier.fillMaxSize()
     ) { padding ->
 
         Box(
@@ -134,6 +100,7 @@ fun SelectListScreen(
                     }
                 }
         ) {
+
             Column(
                 modifier = Modifier
                     .fillMaxSize()
@@ -141,64 +108,161 @@ fun SelectListScreen(
                     .padding(16.dp)
             ) {
 
-                Text(
-                    text = "Selecciona una lista",
-                    style = MaterialTheme.typography.headlineSmall
-                )
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(Color(0xFFFFEB3B)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "My Lists",
+                        style = MaterialTheme.typography.headlineLarge.copy(
+                            fontWeight = FontWeight.Bold
+                        )
+                    )
+                }
 
-                Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(24.dp))
+
+                Text("Owned", style = MaterialTheme.typography.titleMedium)
+
+                Spacer(modifier = Modifier.height(12.dp))
 
                 LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+
                     items(listas) { lista ->
+
+                        val miembros = miembrosPorLista[lista.id] ?: emptyList()
+
                         ListaCard(
                             nombre = lista.nombre,
                             fecha = lista.fechaCreacion,
-                            onClick = { onListSelected(lista.id) }
+                            miembros = miembros,
+                            onClick = { onListSelected(lista.id) },
+                            onAddClick = { showDialog = true }
                         )
                     }
                 }
+            }
+        }
+    }
 
-                Spacer(modifier = Modifier.height(16.dp))
+    EmailDialog(
+        showDialog = showDialog,
+        onDismiss = { showDialog = false },
+        onAccept = { email ->
+            println("Email introducido: $email")
+        }
+    )
+}
 
+@Composable
+fun ListaCard(
+    nombre: String,
+    fecha: String,
+    miembros: List<String>,
+    onClick: () -> Unit,
+    onAddClick: () -> Unit
+) {
+    val pastelColors = listOf(
+        Color(0xFFFFC1CC),
+        Color(0xFFFFE4B5),
+        Color(0xFFFFF4B2),
+        Color(0xFFC8E6C9),
+        Color(0xFFB3E5FC),
+        Color(0xFFD1C4E9),
+        Color(0xFFFFD8B1),
+        Color(0xFFE1F5FE),
+        Color(0xFFF8BBD0),
+        Color(0xFFDCEDC8)
+    )
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(pastelColors.random(), RoundedCornerShape(20.dp))
+            .border(2.dp, Color.Black, RoundedCornerShape(20.dp))
+            .padding(12.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+
+        Column(modifier = Modifier.padding(16.dp)) {
+            Text(nombre)
+            Text("Creada el $fecha", style = MaterialTheme.typography.bodySmall)
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Text("Members:")
+
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                miembros.forEach { miembro ->
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Default.Face, contentDescription = null)
+                        Text(miembro)
+                    }
+                }
+            }
+        }
+
+        Box(
+            modifier = Modifier
+                .background(Color(0xFF69F0AE), CircleShape)
+                .padding(6.dp)
+        ) {
+            IconButton(onClick = onAddClick) {
+                Icon(Icons.Default.Add, contentDescription = "Añadir")
             }
         }
     }
 }
 
 @Composable
-fun ListaCard(nombre: String, fecha: String, onClick: () -> Unit) {
-    val pastelColors = listOf(
-        Color(0xFFFFC1CC), // Rosa pastel
-        Color(0xFFFFE4B5), // Melocotón suave
-        Color(0xFFFFF4B2), // Amarillo pastel
-        Color(0xFFC8E6C9), // Verde menta suave
-        Color(0xFFB3E5FC), // Azul cielo pastel
-        Color(0xFFD1C4E9), // Lavanda pastel
-        Color(0xFFFFD8B1), // Naranja crema
-        Color(0xFFE1F5FE), // Azul hielo
-        Color(0xFFF8BBD0), // Rosa algodón
-        Color(0xFFDCEDC8)  // Verde lima pastel
-    )
+fun EmailDialog(
+    showDialog: Boolean,
+    onDismiss: () -> Unit,
+    onAccept: (String) -> Unit
+) {
+    var email by remember { mutableStateOf("") }
 
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .background(pastelColors.random(), RoundedCornerShape(16.dp))
-            .border(2.dp, Color.Black, RoundedCornerShape(16.dp))
-            .padding(16.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
+    if (showDialog) {
+        AlertDialog(
+            onDismissRequest = { onDismiss() },
 
-    ) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Text(nombre)
-            Text("Creada el $fecha",style = MaterialTheme.typography.bodySmall)
-        }
-        Image(
-            painter = painterResource(id = R.drawable.camara),
-            contentDescription = null,
-            modifier = Modifier.size(30.dp)
+            title = {
+                Text("Añadir miembro")
+            },
+
+            text = {
+                OutlinedTextField(
+                    value = email,
+                    onValueChange = { email = it },
+                    placeholder = { Text("correo@email.com") },
+                    singleLine = true
+                )
+            },
+
+            confirmButton = {
+                Button(
+                    onClick = {
+                        onAccept(email)
+                        onDismiss()
+                    }
+                ) {
+                    Text("Aceptar")
+                }
+            },
+
+            dismissButton = {
+                Button(
+                    onClick = { onDismiss() }
+                ) {
+                    Text("Cancelar")
+                }
+            }
         )
     }
 }
-

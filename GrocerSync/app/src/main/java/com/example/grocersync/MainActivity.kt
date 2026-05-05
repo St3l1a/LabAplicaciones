@@ -40,6 +40,7 @@ class MainActivity : ComponentActivity() {
                 cargarUsuariosDesdeJson()
                 cargarListasDesdeJson()
                 cargarItemsDesdeJson()
+                cargarListaUsuarioDesdeJson()
             }
         }
         setContent {
@@ -148,6 +149,30 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    private suspend fun cargarListaUsuarioDesdeJson() {
+        val db = AppDatabase.getDatabase(applicationContext)
+        val dao = db.listaDao()
+
+        dao.deleteAllListaUsuarios() // opcional, si tienes este método
+
+        try {
+            val json = resources.openRawResource(R.raw.listusers)
+                .bufferedReader().use { it.readText() }
+
+            val relaciones: List<ListaUsuarioCrossRef> = Gson().fromJson(
+                json,
+                object : TypeToken<List<ListaUsuarioCrossRef>>() {}.type
+            )
+
+            relaciones.forEach { dao.insertListaUsuarioCrossRef(it) }
+
+            Log.d("DB", "${relaciones.size} relaciones insertadas desde JSON")
+
+        } catch (e: Exception) {
+            Log.e("DB", "Error cargando lista_usuario desde JSON", e)
+        }
+    }
+
     private suspend fun cargarItemsDesdeJson() {
         val db = AppDatabase.getDatabase(applicationContext)
         val dao = db.listaDao()
@@ -172,12 +197,12 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+
+
     suspend fun asignarUsuarioALista(dao: ListaDao, listaId: Int, usuarioId: Int) {
         dao.insertCrossRef(
             ListaUsuarioCrossRef(listaId, usuarioId)
         )
-
-
     }
 
 

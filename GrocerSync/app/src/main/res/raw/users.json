@@ -1,15 +1,14 @@
 [
   {
-    "id": "1",
+    "id": "5",
     "nombre": "Test",
     "email": "test@example.com",
     "password": "123"
-  },
-  {
-    "id": "2",
-    "nombre": "Carlos Pérez",
-    "email": "carlos@example.com",
-    "password": "abcd"
   }
+  ,
+  { "id": 1, "nombre": "Ana", "email": "ana@test.com", "password": "1234" },
+  { "id": 2, "nombre": "Luis", "email": "luis@test.com", "password": "1234" },
+  { "id": 3, "nombre": "Marta", "email": "marta@test.com", "password": "1234" },
+  { "id": 4, "nombre": "Carlos", "email": "carlos@test.com", "password": "1234" }
 ]
 

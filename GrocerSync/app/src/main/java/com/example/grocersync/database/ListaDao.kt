@@ -10,6 +10,10 @@ interface ListaDao {
     @Query("SELECT * FROM listas")
     suspend fun getListas(): List<Lista>
 
+    @Transaction
+    @Query("SELECT * FROM listas WHERE id = :listaId")
+    suspend fun getListaConUsuarios(listaId: Int): ListaConUsuarios?
+
     @Insert suspend fun insertLista(lista: Lista)
 
 
@@ -64,6 +68,10 @@ interface ListaDao {
     @Insert
     suspend fun insertListaUsuarioCrossRef(crossRef: ListaUsuarioCrossRef)
 
+    @Query("DELETE FROM listausuariocrossref")
+    suspend fun deleteAllListaUsuarios()
+
+
     // 🔹 OBTENER LISTAS CON USUARIOS
     @Transaction
     @Query("SELECT * FROM listas")
@@ -75,6 +83,8 @@ interface ListaDao {
     @Transaction
     @Query("SELECT * FROM usuarios WHERE id = :usuarioId")
     suspend fun getUsuarioConListas(usuarioId: Int): UsuarioConListas
+
+
 
 }
 

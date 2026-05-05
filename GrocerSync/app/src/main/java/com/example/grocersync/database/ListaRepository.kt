@@ -26,4 +26,10 @@ class ListaRepository(private val dao: ListaDao) {
         return usuarioConListas.listas
     }
 
+    suspend fun obtenerMiembrosDeLista(dao: ListaDao, id: Int): List<String> {
+        val listaConUsuarios = dao.getListaConUsuarios(id)
+
+        return listaConUsuarios?.usuarios?.map { it.nombre } ?: emptyList()
+    }
+
 }
