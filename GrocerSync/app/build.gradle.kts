@@ -3,7 +3,11 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
     id("com.google.devtools.ksp")
+    id("com.google.gms.google-services")
+
+
 }
+
 
 android {
     namespace = "com.example.grocersync"
@@ -61,6 +65,10 @@ dependencies {
     debugImplementation(libs.androidx.compose.ui.test.manifest)
     implementation("io.coil-kt:coil-compose:2.4.0")
     val room_version = "2.8.4"
+
+    implementation(platform("com.google.firebase:firebase-bom:33.10.0"))
+
+    implementation("com.google.firebase:firebase-firestore")
 
     implementation("androidx.room:room-runtime:$room_version")
 

@@ -17,7 +17,6 @@ import com.example.grocersync.database.ListaDao
 import com.example.grocersync.database.ListaRepository
 import com.example.grocersync.database.ListaUsuarioCrossRef
 import com.example.grocersync.database.Usuario
-import com.example.grocersync.database.UsuarioConListas
 import com.example.grocersync.screen.AddItemScreen
 import com.example.grocersync.screen.LoginScreen
 import com.example.grocersync.screen.StatisticsScreen
@@ -28,15 +27,32 @@ import com.google.gson.Gson
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import java.io.Console
+import com.google.firebase.firestore.FirebaseFirestore
 
 class MainActivity : ComponentActivity() {
     var usuarioActualId: Int = -1
+    private lateinit var db: FirebaseFirestore
 
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        db = FirebaseFirestore.getInstance()
+        insertarEnGrocersyncDB()
+
+        val test = hashMapOf(
+            "mensaje" to "Firebase funciona"
+        )
+
+        db.collection("test")
+            .add(test)
+            .addOnSuccessListener {
+                Log.d("FIREBASE", "FUNCIONA")
+            }
+            .addOnFailureListener {
+                Log.e("FIREBASE", "ERROR")
+            }
+
 // 📥 Cargar usuarios desde JSON si la BD está vacía
         lifecycleScope.launch {
             withContext(Dispatchers.IO) {
@@ -223,6 +239,27 @@ class MainActivity : ComponentActivity() {
         dao.insertCrossRef(
             ListaUsuarioCrossRef(listaId, usuarioId)
         )
+    }
+
+    private fun insertarEnGrocersyncDB() {
+
+        val data = hashMapOf(
+            "mensaje" to "Firebase funciona",
+            "usuario" to usuarioActualId,
+            "timestamp" to System.currentTimeMillis()
+        )
+
+        db.collection("GrocersyncDB")
+            .add(data)
+            .addOnSuccessListener { documentReference ->
+
+                Log.d("FIREBASE", "Insertado con ID: ${documentReference.id}")
+
+            }
+            .addOnFailureListener { e ->
+
+                Log.e("FIREBASE", "Error insertando", e)
+            }
     }
 
 
