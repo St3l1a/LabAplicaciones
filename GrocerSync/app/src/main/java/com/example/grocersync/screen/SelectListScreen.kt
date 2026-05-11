@@ -1,15 +1,15 @@
 package com.example.grocersync.ui
 
-import android.R
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Face
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -17,58 +17,96 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.layout.VerticalAlignmentLine
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import com.example.grocersync.ui.theme.GrocerSyncTheme
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.foundation.layout.Arrangement
-
-
-
+import androidx.compose.ui.unit.sp
+import com.example.grocersync.R
+import com.example.grocersync.database.Item
+import com.example.grocersync.database.ListaRepository
 
 @Composable
-fun SelectListScreen(
-    onBack: () -> Unit = {},
-    onListSelected: (String) -> Unit,
-
-
+fun MainListScreen(
+    listId: Int,
+    repository: ListaRepository,
+    onAddClick: () -> Unit,
+    onStatsClick: () -> Unit
 ) {
 
-    val currentList = "My List"
-    var showDialog by remember { mutableStateOf(false) }
+    var search by remember { mutableStateOf("") }
 
-    val otherLists = listOf("Family", "Roma Trip", "Fallas")
+    // 🔥 Datos desde Room
+    val listaConItems by repository
+        .getListaConItems(listId)
+        .collectAsState(initial = null)
+
+    // 🔥 Filtrado búsqueda
+    val filteredItems = listaConItems?.items?.filter {
+        it.nombre.contains(search, ignoreCase = true)
+    } ?: emptyList()
 
     Scaffold(
-        modifier = Modifier.fillMaxSize()
+        modifier = Modifier.fillMaxSize(),
+
+        floatingActionButton = {
+            Column(
+                horizontalAlignment = Alignment.End,
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+
+                // 📊 Botón estadísticas
+                FloatingActionButton(
+                    onClick = { onStatsClick() },
+                    containerColor = Color(0xFFFFEB3B),
+                    shape = CircleShape
+                ) {
+                    Icon(
+                        painter = painterResource(id = R.drawable.graph),
+                        contentDescription = "Estadísticas",
+                        modifier = Modifier.size(24.dp)
+                    )
+                }
+
+                // ➕ Botón añadir
+                FloatingActionButton(
+                    onClick = { onAddClick() },
+                    containerColor = Color(0xFFE6C6E8),
+                    shape = CircleShape
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Add,
+                        contentDescription = "Añadir"
+                    )
+                }
+            }
+        },
+        floatingActionButtonPosition = FabPosition.End
     ) { padding ->
 
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(padding)
                 .background(Color(0xFFCBE8FF))
                 .drawBehind {
+
                     val colors = listOf(
                         Color(0xFF90CAF9),
                         Color(0xFFA5D6A7),
                         Color(0xFFFFCC80),
                         Color(0xFFCE93D8),
-                        Color(0xFF80DEEA)
+                        Color(0xFF80DEEA),
+                        Color(0xFFFFAB91),
+                        Color(0xFFAED581)
                     )
 
                     val bubbles = listOf(
-                        Triple(size.width * 0.2f, size.height * 0.2f, 350f),
-                        Triple(size.width * 0.8f, size.height * 0.25f, 350f),
-                        Triple(size.width * 0.6f, size.height * 0.6f, 350f),
-                        Triple(size.width * 0.2f, size.height * 0.8f, 350f),
-                        Triple(size.width * 0.9f, size.height * 0.9f, 350f)
+                        Triple(size.width * 0.15f, size.height * 0.20f, 350f),
+                        Triple(size.width * 0.80f, size.height * 0.18f, 350f),
+                        Triple(size.width * 0.60f, size.height * 0.45f, 350f),
+                        Triple(size.width * 0.20f, size.height * 0.70f, 350f),
+                        Triple(size.width * 0.85f, size.height * 0.85f, 350f),
+                        Triple(size.width * 0.50f, size.height * 0.10f, 350f),
+                        Triple(size.width * 0.30f, size.height * 0.50f, 350f)
                     )
 
                     bubbles.forEachIndexed { i, (x, y, r) ->
@@ -84,130 +122,119 @@ fun SelectListScreen(
             Column(
                 modifier = Modifier
                     .fillMaxSize()
+                    .padding(padding)
                     .padding(16.dp)
             ) {
 
-                // 🔝 HEADER
-                Row(
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .background(Color(0xFFFFEB3B)),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = "My Lists",
-                            style = MaterialTheme.typography.headlineLarge.copy(
-                                fontWeight = FontWeight.Bold
-                            )
-                        )
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(24.dp))
-
-                // -------- ACTUAL --------
-                SectionDivider("Owned")
-
-                Spacer(modifier = Modifier.height(12.dp))
-
-                ListCard(currentList) {
-                    onListSelected(currentList)
-                }
-
-                Spacer(modifier = Modifier.height(12.dp))
-
-                // MEMBERS
-                Row(
+                // 🔥 Nombre lista desde Room
+                Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .background(Color(0xFFD1C4E9), RoundedCornerShape(20.dp))
-                        .border(2.dp, Color.Black, RoundedCornerShape(20.dp))
-                        .padding(12.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
+                        .background(Color(0xFFFFEB3B)),
+                    contentAlignment = Alignment.Center
                 ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text("Members ")
-                        Icon(Icons.Default.Face, contentDescription = null)
+                    Text(
+                        text = listaConItems?.lista?.nombre ?: "Mi lista",
+                        style = MaterialTheme.typography.headlineLarge.copy(
+                            fontWeight = FontWeight.Bold
+                        )
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                OutlinedTextField(
+                    value = search,
+                    onValueChange = { search = it },
+                    placeholder = { Text("Buscar") },
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(15.dp)
+                )
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                LazyColumn(
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+
+                    val unboughtItems = filteredItems.filter { !it.comprado }
+                    val boughtItems = filteredItems.filter { it.comprado }
+
+                    // 🟣 NO comprados
+                    items(unboughtItems) { item ->
+                        ProductCard(item)
                     }
 
-                    Box(
-                        modifier = Modifier
-                            .background(Color(0xFF69F0AE), CircleShape)
-                            .padding(6.dp)
-                    ) {
-                        IconButton(onClick = { showDialog = true }) {
-                            Icon(Icons.Default.Add, contentDescription = "Añadir")
+                    // 🟡 Separador si hay comprados
+                    if (boughtItems.isNotEmpty()) {
+
+                        item {
+                            Spacer(modifier = Modifier.height(24.dp))
+
+                            Text(
+                                text = "Comprados",
+                                fontSize = 18.sp,
+                                fontWeight = FontWeight.Bold,
+                                modifier = Modifier.padding(start = 4.dp)
+                            )
+
+                            Spacer(modifier = Modifier.height(12.dp))
+                        }
+
+                        // 🟢 Comprados abajo
+                        items(boughtItems) { item ->
+                            ProductCard(item)
                         }
                     }
+
+
+
                 }
 
-                Spacer(modifier = Modifier.height(24.dp))
-
-                // -------- OTHERS --------
-                SectionDivider("Others")
-
-                Spacer(modifier = Modifier.height(12.dp))
-
-                otherLists.forEach { list ->
-                    ListCard(list) {
-                        onListSelected(list)
-                    }
-                    Spacer(modifier = Modifier.height(12.dp))
-                }
             }
+
         }
+
     }
-    EmailDialog(
-        showDialog = showDialog,
-        onDismiss = { showDialog = false },
-        onAccept = { email ->
-            println("Email introducido: $email")
-        }
-    )
+
 }
 
 @Composable
-fun SectionDivider(text: String) {
+fun ProductCard(item: Item) {
+
     Row(
-        modifier = Modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Divider(modifier = Modifier.weight(1f), color = Color.Black)
-        Text(
-            text = text,
-            modifier = Modifier.padding(horizontal = 8.dp),
-            style = MaterialTheme.typography.bodyMedium
-        )
-        Divider(modifier = Modifier.weight(1f), color = Color.Black)
-    }
-}
-
-@Composable
-fun ListCard(text: String, onClick: () -> Unit) {
-    Button(
-        onClick = onClick,
-        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFE6C6E8)),
-        shape = RoundedCornerShape(16.dp),
         modifier = Modifier
             .fillMaxWidth()
+            .background(Color(0xFFE6C6E8), RoundedCornerShape(16.dp))
             .border(2.dp, Color.Black, RoundedCornerShape(16.dp))
-
+            .padding(16.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
     ) {
-        Text(
-            text = text,
-            color = Color.Black // aquí cambias el color del texto
+
+        Column {
+
+            Text(item.nombre,
+                fontSize = 16.sp)
+
+            Text(
+                "Cantidad: ${item.cantidad}",
+                fontSize = 13.sp,
+                style = MaterialTheme.typography.bodySmall
+            )
+            Text("Categoria: ${item.categoria}",
+                fontSize = 13.sp)
+
+
+            Text("Nota: ${item.nota}",
+                fontSize = 13.sp)
+        }
+
+        Image(
+            painter = painterResource(id = R.drawable.camara),
+            contentDescription = null,
+            modifier = Modifier.size(30.dp)
         )
     }
-}
-@Preview(showBackground = true)
-@Composable
-fun ProfilePreview() {
-    GrocerSyncTheme {
-        SelectListScreen(onBack = { /* opcional */ },
-            onListSelected = { listName -> "Prueba"
-            })
-    }
+
 }

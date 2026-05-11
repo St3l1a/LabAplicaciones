@@ -2,6 +2,7 @@ package com.example.grocersync.ui
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -180,12 +181,13 @@ fun ListaCard(
     Row(
         modifier = Modifier
             .fillMaxWidth()
+            .clickable { onClick() }
             .background(pastelColors.random(), RoundedCornerShape(20.dp))
             .border(2.dp, Color.Black, RoundedCornerShape(20.dp))
             .padding(12.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
-    ) {
+    ){
 
         Column(modifier = Modifier.padding(16.dp)) {
             Text(nombre)

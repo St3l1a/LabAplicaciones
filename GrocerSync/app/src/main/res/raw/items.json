@@ -19,7 +19,7 @@
   },
   {
     "id": 3,
-    "listaId": 2,
+    "listaId": 1,
     "nombre": "Refrescos",
     "cantidad": 6,
     "categoria": "Bebidas",
@@ -28,11 +28,11 @@
   },
   {
     "id": 4,
-    "listaId": 3,
+    "listaId": 1,
     "nombre": "Leche",
     "cantidad": 2,
     "categoria": "Lácteos",
-    "comprado": false,
+    "comprado": true,
     "nota": "Desnatada"
   },
   {

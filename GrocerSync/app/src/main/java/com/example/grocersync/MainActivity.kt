@@ -5,6 +5,7 @@ import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.lifecycleScope
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -13,12 +14,14 @@ import com.example.grocersync.database.AppDatabase
 import com.example.grocersync.database.Item
 import com.example.grocersync.database.Lista
 import com.example.grocersync.database.ListaDao
+import com.example.grocersync.database.ListaRepository
 import com.example.grocersync.database.ListaUsuarioCrossRef
 import com.example.grocersync.database.Usuario
 import com.example.grocersync.database.UsuarioConListas
 import com.example.grocersync.screen.AddItemScreen
 import com.example.grocersync.screen.LoginScreen
 import com.example.grocersync.screen.StatisticsScreen
+import com.example.grocersync.ui.MainListScreen
 import com.example.grocersync.ui.SelectListScreen
 import com.google.common.reflect.TypeToken
 import com.google.gson.Gson
@@ -63,12 +66,29 @@ class MainActivity : ComponentActivity() {
                     )
                 }
 
-                // 🟡 Selección de lista
-                composable("lista") {
-                    SelectListScreen(
-                        onBack = { /* opcional */ },
-                        onListSelected = { listName ->
-                            navController.navigate("main/$listName")
+                composable("main/{listId}") { backStackEntry ->
+
+                    val context = LocalContext.current
+
+                    val listId = backStackEntry
+                        .arguments
+                        ?.getString("listId")
+                        ?.toIntOrNull() ?: 1
+
+                    val db = AppDatabase.getDatabase(context)
+                    val dao = db.listaDao()
+                    val repository = ListaRepository(dao)
+
+                    MainListScreen(
+                        listId = listId,
+                        repository = repository,
+
+                        onAddClick = {
+                            navController.navigate("addItem/$listId")
+                        },
+
+                        onStatsClick = {
+                            navController.navigate("stats/$listId")
                         }
                     )
                 }

@@ -2,6 +2,7 @@ package com.example.grocersync.database
 
 
 import androidx.room.*
+import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface ListaDao {
@@ -84,6 +85,9 @@ interface ListaDao {
     @Query("SELECT * FROM usuarios WHERE id = :usuarioId")
     suspend fun getUsuarioConListas(usuarioId: Int): UsuarioConListas
 
+    @Transaction
+    @Query("SELECT * FROM listas WHERE id = :listaId")
+    fun getListaConItems(listaId: Int): Flow<ListaConItems>
 
 
 }

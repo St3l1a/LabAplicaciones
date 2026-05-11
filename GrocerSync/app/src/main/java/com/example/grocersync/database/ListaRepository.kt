@@ -1,5 +1,7 @@
 package com.example.grocersync.database
 
+import kotlinx.coroutines.flow.Flow
+
 class ListaRepository(private val dao: ListaDao) {
 
     suspend fun getListas() = dao.getListas()
@@ -30,6 +32,10 @@ class ListaRepository(private val dao: ListaDao) {
         val listaConUsuarios = dao.getListaConUsuarios(id)
 
         return listaConUsuarios?.usuarios?.map { it.nombre } ?: emptyList()
+    }
+
+    fun getListaConItems(listaId: Int): Flow<ListaConItems> {
+        return dao.getListaConItems(listaId)
     }
 
 }
