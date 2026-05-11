@@ -26,38 +26,38 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.tooling.preview.Preview
 import com.example.grocersync.R
 import com.example.grocersync.database.AppDatabase
-import com.example.grocersync.database.ListaRepository
-import com.example.grocersync.ui.theme.GrocerSyncTheme
+import com.example.grocersync.database.Usuario
+import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 @Composable
 fun LoginScreen(
-    onLoginSuccess:  (Int) -> Unit
+    onLoginSuccess: (Int) -> Unit,
+    onNavigateToSign: () -> Unit = {}
 ) {
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var errorMessage by remember { mutableStateOf<String?>(null) }
 
-
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
 
-    // Instanciamos la base de datos (suficiente para un prototipo)
-    val db = remember { AppDatabase.getDatabase(context) }
-    val repository = remember { ListaRepository(db.listaDao()) }
+    // Instancia de Firestore
+    val dbFirestore = remember { FirebaseFirestore.getInstance() }
+    // Room seguirá usándose para almacenar localmente los datos del usuario
+    val roomDb = remember { AppDatabase.getDatabase(context) }
 
     Scaffold(
         modifier = Modifier.fillMaxSize()
     ) { padding ->
-
         Box(
             modifier = Modifier
                 .fillMaxSize()
                 .background(Color(0xFFCBE8FF))
                 .drawBehind {
-
+                    // ... mismo fondo decorativo ...
                     val colors = listOf(
                         Color(0xFF90CAF9),
                         Color(0xFFA5D6A7),
@@ -65,7 +65,6 @@ fun LoginScreen(
                         Color(0xFFCE93D8),
                         Color(0xFF80DEEA)
                     )
-
                     val bubbles = listOf(
                         Triple(size.width * 0.2f, size.height * 0.2f, 350f),
                         Triple(size.width * 0.8f, size.height * 0.25f, 350f),
@@ -73,7 +72,6 @@ fun LoginScreen(
                         Triple(size.width * 0.2f, size.height * 0.8f, 350f),
                         Triple(size.width * 0.9f, size.height * 0.9f, 350f)
                     )
-
                     bubbles.forEachIndexed { i, (x, y, r) ->
                         drawCircle(
                             color = colors[i % colors.size].copy(alpha = 0.35f),
@@ -83,14 +81,13 @@ fun LoginScreen(
                     }
                 }
         ) {
-
             Column(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(24.dp),
                 verticalArrangement = Arrangement.Center
             ) {
-
+                // ... misma cabecera con título e imágenes ...
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -99,8 +96,6 @@ fun LoginScreen(
                     verticalArrangement = Arrangement.Bottom,
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-
-                    // 🟡 TÍTULO
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -114,45 +109,28 @@ fun LoginScreen(
                             )
                         )
                     }
-
                     Spacer(modifier = Modifier.height(20.dp))
-
-                    // 🖼️ IMÁGENES
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceEvenly
                     ) {
-
-                        Image(
-                            painter = painterResource(id = R.drawable.comida),
-                            contentDescription = null,
-                            modifier = Modifier.size(80.dp)
-                        )
-
-                        Image(
-                            painter = painterResource(id = R.drawable.camiseta),
-                            contentDescription = null,
-                            modifier = Modifier.size(80.dp)
-                        )
-
-                        Image(
-                            painter = painterResource(id = R.drawable.escoba),
-                            contentDescription = null,
-                            modifier = Modifier.size(80.dp)
-                        )
+                        Image(painter = painterResource(id = R.drawable.comida), contentDescription = null, modifier = Modifier.size(80.dp))
+                        Image(painter = painterResource(id = R.drawable.camiseta), contentDescription = null, modifier = Modifier.size(80.dp))
+                        Image(painter = painterResource(id = R.drawable.escoba), contentDescription = null, modifier = Modifier.size(80.dp))
                     }
                 }
 
-                Column( modifier = Modifier .fillMaxWidth() .weight(1f), verticalArrangement = Arrangement.Top ){
-                    // 📧 EMAIL
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f),
+                    verticalArrangement = Arrangement.Top
+                ) {
+                    // Campo Email
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .border(
-                                width = 2.dp,
-                                color = Color.Black,
-                                shape = RoundedCornerShape(12.dp)
-                            )
+                            .border(2.dp, Color.Black, RoundedCornerShape(12.dp))
                     ) {
                         TextField(
                             value = email,
@@ -168,19 +146,13 @@ fun LoginScreen(
                             )
                         )
                     }
-
                     Spacer(modifier = Modifier.height(16.dp))
 
-                    // 🔒 PASSWORD
+                    // Campo Password
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .border(
-                                width = 2.dp,
-                                color = Color.Black,
-                                shape = RoundedCornerShape(12.dp)
-                            )
-
+                            .border(2.dp, Color.Black, RoundedCornerShape(12.dp))
                     ) {
                         TextField(
                             value = password,
@@ -189,7 +161,7 @@ fun LoginScreen(
                             modifier = Modifier.fillMaxWidth(),
                             shape = RoundedCornerShape(12.dp),
                             visualTransformation = PasswordVisualTransformation(),
-                                    colors = TextFieldDefaults.colors(
+                            colors = TextFieldDefaults.colors(
                                 focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
                                 unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
                                 focusedIndicatorColor = Color.Transparent,
@@ -197,10 +169,8 @@ fun LoginScreen(
                             )
                         )
                     }
-
                     Spacer(modifier = Modifier.height(16.dp))
 
-                    // 🔘 LOGIN
                     // Mensaje de error
                     errorMessage?.let {
                         Text(
@@ -210,23 +180,56 @@ fun LoginScreen(
                         )
                     }
 
-                    // Botón Login
+                    // Botón Login (MODIFICADO)
                     Button(
                         onClick = {
                             if (email.isBlank() || password.isBlank()) {
                                 errorMessage = "Completá todos los campos"
                                 return@Button
                             }
+                            // Deshabilitar botón mientras se procesa? (opcional)
                             scope.launch {
-                                val usuario = withContext(Dispatchers.IO) {
-                                    repository.login(email, password)
-                                }
-                                if (usuario != null) {
-                                    withContext(Dispatchers.Main) {
-                                        onLoginSuccess(usuario.id)
-                                    }
-                                } else {
-                                    errorMessage = "Email o contraseña incorrectos"
+                                try {
+                                    // 1. Consultar Firestore
+                                    dbFirestore.collection("users")
+                                        .whereEqualTo("email", email)
+                                        .get()
+                                        .addOnSuccessListener { querySnapshot ->
+                                            if (querySnapshot.isEmpty) {
+                                                errorMessage = "Usuario no encontrado"
+                                                return@addOnSuccessListener
+                                            }
+                                            val document = querySnapshot.documents[0]
+                                            val storedPassword = document.getString("password") ?: ""
+                                            val userId = document.getLong("id")?.toInt()
+                                                ?: document.id.hashCode() // fallback si no existe
+                                            val nombre = document.getString("nombre") ?: ""
+
+                                            if (password == storedPassword) {
+                                                // Login exitoso → sincronizar con Room
+                                                scope.launch(Dispatchers.IO) {
+                                                    val dao = roomDb.listaDao()
+                                                    val usuario = Usuario(
+                                                        id = userId,
+                                                        email = email,
+                                                        nombre = nombre,
+                                                        password = password // si tu entidad lo guarda
+                                                    )
+                                                    dao.insertUsuario(usuario) // insertOrUpdate según necesites
+
+                                                    withContext(Dispatchers.Main) {
+                                                        onLoginSuccess(userId)
+                                                    }
+                                                }
+                                            } else {
+                                                errorMessage = "Contraseña incorrecta"
+                                            }
+                                        }
+                                        .addOnFailureListener { exception ->
+                                            errorMessage = "Error de conexión: ${exception.message}"
+                                        }
+                                } catch (e: Exception) {
+                                    errorMessage = "Error inesperado: ${e.message}"
                                 }
                             }
                         },
@@ -236,30 +239,15 @@ fun LoginScreen(
                         Text("Iniciar sesión")
                     }
 
-                    // Crear cuenta (opcional)
+                    // Botón Crear cuenta
                     TextButton(
-                        onClick = { /* Registrar usuario (próximo paso) */ },
+                        onClick = onNavigateToSign,
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Text("Crear cuenta")
                     }
                 }
-
-
-
-
             }
         }
-    }
-}
-
-
-@Preview(showBackground = true, showSystemUi = true)
-@Composable
-fun LoginPreview() {
-    GrocerSyncTheme {
-        LoginScreen(
-            onLoginSuccess = {}
-        )
     }
 }

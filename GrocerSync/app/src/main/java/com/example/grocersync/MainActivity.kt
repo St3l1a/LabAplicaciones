@@ -19,6 +19,7 @@ import com.example.grocersync.database.ListaUsuarioCrossRef
 import com.example.grocersync.database.Usuario
 import com.example.grocersync.screen.AddItemScreen
 import com.example.grocersync.screen.LoginScreen
+import com.example.grocersync.screen.SignScreen
 import com.example.grocersync.screen.StatisticsScreen
 import com.example.grocersync.ui.MainListScreen
 import com.example.grocersync.ui.SelectListScreen
@@ -67,7 +68,7 @@ class MainActivity : ComponentActivity() {
 
             NavHost(
                 navController = navController,
-                startDestination = "login" // 👈 AQUÍ estaba el error
+                startDestination = "login"
             ) {
 
                 // 🔵 LOGIN (primera pantalla)
@@ -77,6 +78,20 @@ class MainActivity : ComponentActivity() {
                             usuarioActualId = usuarioId
                             navController.navigate("select") {
                                 popUpTo("login") { inclusive = true } // evita volver atrás al login
+                            }
+                        },
+                        onNavigateToSign = {  // ← NUEVO
+                            navController.navigate("sign")
+                        }
+                    )
+                }
+
+                // 🟢 SIGN (pantalla de registro)
+                composable("sign") {
+                    SignScreen(
+                        onSignSuccess = { userId ->
+                            navController.navigate("login") {
+                                popUpTo("login") { inclusive = true }
                             }
                         }
                     )
