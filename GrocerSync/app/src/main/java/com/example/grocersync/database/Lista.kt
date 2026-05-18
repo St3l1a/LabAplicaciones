@@ -7,7 +7,7 @@ import androidx.room.PrimaryKey
 data class Lista(
     @PrimaryKey(autoGenerate = true)
     val id: Int = 0,
-    val nombre: String,
-    val fechaCreacion: String,
-    val idCreador: Int
+    val nombre: String = "",
+    val fechaCreacion: String = "",
+    val idCreador: Int = 0
 )

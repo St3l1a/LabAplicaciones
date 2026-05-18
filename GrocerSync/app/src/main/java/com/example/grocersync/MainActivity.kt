@@ -10,59 +10,73 @@ import androidx.lifecycle.lifecycleScope
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
-import com.example.grocersync.database.AppDatabase
-import com.example.grocersync.database.Item
-import com.example.grocersync.database.Lista
-import com.example.grocersync.database.ListaDao
-import com.example.grocersync.database.ListaRepository
-import com.example.grocersync.database.ListaUsuarioCrossRef
-import com.example.grocersync.database.Usuario
-import com.example.grocersync.screen.AddItemScreen
-import com.example.grocersync.screen.LoginScreen
-import com.example.grocersync.screen.SignScreen
-import com.example.grocersync.screen.StatisticsScreen
-import com.example.grocersync.ui.MainListScreen
-import com.example.grocersync.ui.SelectListScreen
+import com.example.grocersync.database.*
+import com.example.grocersync.screen.*
+import com.example.grocersync.ui.*
 import com.google.common.reflect.TypeToken
+import com.google.firebase.firestore.FirebaseFirestore
 import com.google.gson.Gson
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import com.google.firebase.firestore.FirebaseFirestore
 
 class MainActivity : ComponentActivity() {
-    var usuarioActualId: Int = -1
-    private lateinit var db: FirebaseFirestore
 
+    var usuarioActualId: Int = -1
+
+    // ✔ Firebase bien declarado (GLOBAL)
+    private lateinit var db: FirebaseFirestore
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
-        db = FirebaseFirestore.getInstance()
-        insertarEnGrocersyncDB()
 
+        // =========================
+        // 1. FIREBASE INIT
+        // =========================
+        db = FirebaseFirestore.getInstance()
+
+        // =========================
+        // 2. LOCAL DB + SYNC
+        // =========================
+        val localDb = AppDatabase.getDatabase(this)
+        val syncRepository = SyncRepository(db, localDb.listaDao())
+
+        // =========================
+        // 3. LOAD LOCAL DATA FIRST
+        // =========================
+        lifecycleScope.launch {
+            withContext(Dispatchers.IO) {
+
+                cargarUsuariosDesdeJson()
+                cargarListasDesdeJson()
+                cargarItemsDesdeJson()
+                cargarListaUsuarioDesdeJson()
+
+                // ✔ sync SOLO cuando Room ya tiene datos
+                syncRepository.fullSync()
+            }
+        }
+
+        // =========================
+        // 4. TEST FIREBASE (OPCIONAL)
+        // =========================
         val test = hashMapOf(
-            "mensaje" to "Firebase funciona"
+            "mensaje" to "Firebase funciona Estrella"
         )
 
-        db.collection("test")
+        db.collection("GrocerSyncDB")
             .add(test)
             .addOnSuccessListener {
-                Log.d("FIREBASE", "FUNCIONA")
+                Log.d("FIREBASE", "FUNCIONA Estrella")
             }
             .addOnFailureListener {
                 Log.e("FIREBASE", "ERROR")
             }
 
-// 📥 Cargar usuarios desde JSON si la BD está vacía
-        lifecycleScope.launch {
-            withContext(Dispatchers.IO) {
-                cargarUsuariosDesdeJson()
-                cargarListasDesdeJson()
-                cargarItemsDesdeJson()
-                cargarListaUsuarioDesdeJson()
-            }
-        }
+        // =========================
+        // 5. UI NAVIGATION
+        // =========================
         setContent {
             val navController = rememberNavController()
 
@@ -71,26 +85,11 @@ class MainActivity : ComponentActivity() {
                 startDestination = "login"
             ) {
 
-                // 🔵 LOGIN (primera pantalla)
                 composable("login") {
                     LoginScreen(
                         onLoginSuccess = { usuarioId ->
                             usuarioActualId = usuarioId
                             navController.navigate("select") {
-                                popUpTo("login") { inclusive = true } // evita volver atrás al login
-                            }
-                        },
-                        onNavigateToSign = {  // ← NUEVO
-                            navController.navigate("sign")
-                        }
-                    )
-                }
-
-                // 🟢 SIGN (pantalla de registro)
-                composable("sign") {
-                    SignScreen(
-                        onSignSuccess = { userId ->
-                            navController.navigate("login") {
                                 popUpTo("login") { inclusive = true }
                             }
                         }
@@ -106,25 +105,17 @@ class MainActivity : ComponentActivity() {
                         ?.getString("listId")
                         ?.toIntOrNull() ?: 1
 
-                    val db = AppDatabase.getDatabase(context)
-                    val dao = db.listaDao()
+                    val dao = AppDatabase.getDatabase(context).listaDao()
                     val repository = ListaRepository(dao)
 
                     MainListScreen(
                         listId = listId,
                         repository = repository,
-
-                        onAddClick = {
-                            navController.navigate("addItem/$listId")
-                        },
-
-                        onStatsClick = {
-                            navController.navigate("stats/$listId")
-                        }
+                        onAddClick = { navController.navigate("addItem/$listId") },
+                        onStatsClick = { navController.navigate("stats/$listId") }
                     )
                 }
 
-                // 🟢 Pantalla principal de lista
                 composable("select") {
                     SelectListScreen(
                         usuarioId = usuarioActualId,
@@ -137,27 +128,26 @@ class MainActivity : ComponentActivity() {
                     )
                 }
 
-
                 composable("add_item") {
                     AddItemScreen()
                 }
+
                 composable("stats") {
                     StatisticsScreen()
                 }
-
-
             }
         }
     }
-    private suspend fun cargarUsuariosDesdeJson() {
-        val db = AppDatabase.getDatabase(applicationContext)
-        val dao = db.listaDao()
 
-        //if (dao.getUsuarios().isNotEmpty()) return
+    // =====================================================
+    // 📥 JSON LOADERS (IGUAL QUE LOS TUYOS PERO OK)
+    // =====================================================
+
+    private suspend fun cargarUsuariosDesdeJson() {
+        val dao = AppDatabase.getDatabase(applicationContext).listaDao()
         dao.deleteAllUsuarios()
 
         try {
-            // Leer desde res/raw/users.json
             val json = resources.openRawResource(R.raw.users)
                 .bufferedReader().use { it.readText() }
 
@@ -167,21 +157,20 @@ class MainActivity : ComponentActivity() {
             )
 
             usuarios.forEach { dao.insertUsuario(it) }
-            Log.d("DB", "${usuarios.size} usuarios insertados desde JSON")
+
+            Log.d("DB", "Usuarios: ${usuarios.size}")
+
         } catch (e: Exception) {
-            Log.e("DB", "Error cargando usuarios desde JSON", e)
+            Log.e("DB", "Error usuarios", e)
         }
     }
 
     private suspend fun cargarListasDesdeJson() {
-        val db = AppDatabase.getDatabase(applicationContext)
-        val dao = db.listaDao()
-
+        val dao = AppDatabase.getDatabase(applicationContext).listaDao()
         dao.deleteAllListas()
-        dao.deleteAllCrossRefs()   // ← IMPORTANTE
+        dao.deleteAllCrossRefs()
 
         try {
-            // Leer desde res/raw/users.json
             val json = resources.openRawResource(R.raw.listas)
                 .bufferedReader().use { it.readText() }
 
@@ -194,17 +183,17 @@ class MainActivity : ComponentActivity() {
                 dao.insertLista(it)
                 asignarUsuarioALista(dao, it.id, it.idCreador)
             }
-            Log.d("DB LISTAS", "${listas.size} listas insertados desde JSON")
+
+            Log.d("DB", "Listas: ${listas.size}")
+
         } catch (e: Exception) {
-            Log.e("DB", "Error cargando listas desde JSON", e)
+            Log.e("DB", "Error listas", e)
         }
     }
 
     private suspend fun cargarListaUsuarioDesdeJson() {
-        val db = AppDatabase.getDatabase(applicationContext)
-        val dao = db.listaDao()
-
-        dao.deleteAllListaUsuarios() // opcional, si tienes este método
+        val dao = AppDatabase.getDatabase(applicationContext).listaDao()
+        dao.deleteAllListaUsuarios()
 
         try {
             val json = resources.openRawResource(R.raw.listusers)
@@ -217,17 +206,15 @@ class MainActivity : ComponentActivity() {
 
             relaciones.forEach { dao.insertListaUsuarioCrossRef(it) }
 
-            Log.d("DB", "${relaciones.size} relaciones insertadas desde JSON")
+            Log.d("DB", "Relaciones: ${relaciones.size}")
 
         } catch (e: Exception) {
-            Log.e("DB", "Error cargando lista_usuario desde JSON", e)
+            Log.e("DB", "Error relaciones", e)
         }
     }
 
     private suspend fun cargarItemsDesdeJson() {
-        val db = AppDatabase.getDatabase(applicationContext)
-        val dao = db.listaDao()
-
+        val dao = AppDatabase.getDatabase(applicationContext).listaDao()
         dao.deleteAllItems()
 
         try {
@@ -241,43 +228,16 @@ class MainActivity : ComponentActivity() {
 
             items.forEach { dao.insertItem(it) }
 
-            Log.d("DB", "${items.size} items insertados desde JSON")
+            Log.d("DB", "Items: ${items.size}")
 
         } catch (e: Exception) {
-            Log.e("DB", "Error cargando items desde JSON", e)
+            Log.e("DB", "Error items", e)
         }
     }
 
-
-
-    suspend fun asignarUsuarioALista(dao: ListaDao, listaId: Int, usuarioId: Int) {
+    private suspend fun asignarUsuarioALista(dao: ListaDao, listaId: Int, usuarioId: Int) {
         dao.insertCrossRef(
             ListaUsuarioCrossRef(listaId, usuarioId)
         )
     }
-
-    private fun insertarEnGrocersyncDB() {
-
-        val data = hashMapOf(
-            "mensaje" to "Firebase funciona",
-            "usuario" to usuarioActualId,
-            "timestamp" to System.currentTimeMillis()
-        )
-
-        db.collection("GrocersyncDB")
-            .add(data)
-            .addOnSuccessListener { documentReference ->
-
-                Log.d("FIREBASE", "Insertado con ID: ${documentReference.id}")
-
-            }
-            .addOnFailureListener { e ->
-
-                Log.e("FIREBASE", "Error insertando", e)
-            }
-    }
-
-
-
-
 }

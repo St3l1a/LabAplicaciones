@@ -7,10 +7,10 @@ import androidx.room.PrimaryKey
 data class Item(
     @PrimaryKey(autoGenerate = true)
     val id: Int = 0,
-    val listaId: Int, // relación con Lista
-    val nombre: String,
-    val cantidad: Int,
-    val categoria: String,
-    val comprado: Boolean,
-    val nota: String
+    val listaId: Int = 0, // relación con Lista
+    val nombre: String = "",
+    val cantidad: Int= 0,
+    val categoria: String = "",
+    val comprado: Boolean = false,
+    val nota: String = ""
 )

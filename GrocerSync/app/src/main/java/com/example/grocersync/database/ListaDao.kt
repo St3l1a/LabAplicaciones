@@ -15,7 +15,9 @@ interface ListaDao {
     @Query("SELECT * FROM listas WHERE id = :listaId")
     suspend fun getListaConUsuarios(listaId: Int): ListaConUsuarios?
 
-    @Insert suspend fun insertLista(lista: Lista)
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertLista(lista: Lista)
 
 
     @Delete
@@ -25,6 +27,8 @@ interface ListaDao {
     suspend fun deleteAllListas()
 
     // 🔹 ITEMS
+    @Query("SELECT * FROM items")
+    suspend fun getAllItems(): List<Item>
     @Query("SELECT * FROM items WHERE listaId = :listaId")
     suspend fun getItems(listaId: Int): List<Item>
 
@@ -46,7 +50,7 @@ interface ListaDao {
     suspend fun getListasConItems(): List<ListaConItems>
 
 
-    @Insert suspend fun insertCrossRef(crossRef: ListaUsuarioCrossRef)
+    @Insert(onConflict = OnConflictStrategy.REPLACE) suspend fun insertCrossRef(crossRef: ListaUsuarioCrossRef)
 
     @Query("DELETE FROM ListaUsuarioCrossRef")
     suspend fun deleteAllCrossRefs()
@@ -66,7 +70,7 @@ interface ListaDao {
     suspend fun getUsuarios(): List<Usuario>
 
     // 🔹 RELACIONAR USUARIO CON LISTA
-    @Insert
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertListaUsuarioCrossRef(crossRef: ListaUsuarioCrossRef)
 
     @Query("DELETE FROM listausuariocrossref")
@@ -88,6 +92,8 @@ interface ListaDao {
     @Transaction
     @Query("SELECT * FROM listas WHERE id = :listaId")
     fun getListaConItems(listaId: Int): Flow<ListaConItems>
+
+
 
 
 }
