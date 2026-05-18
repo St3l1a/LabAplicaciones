@@ -66,6 +66,8 @@ dependencies {
     implementation("io.coil-kt:coil-compose:2.4.0")
     val room_version = "2.8.4"
 
+    implementation("androidx.lifecycle:lifecycle-runtime-compose:2.6.1")
+
     implementation(platform("com.google.firebase:firebase-bom:33.10.0"))
 
     implementation("com.google.firebase:firebase-firestore")

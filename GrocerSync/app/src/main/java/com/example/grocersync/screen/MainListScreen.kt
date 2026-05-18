@@ -25,16 +25,24 @@ import com.example.grocersync.database.AppDatabase
 import com.example.grocersync.database.Lista
 import com.example.grocersync.database.ListaRepository
 import com.google.firebase.firestore.FirebaseFirestore
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.repeatOnLifecycle
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
+
 fun SelectListScreen(
     usuarioId: Int,
     onListSelected: (Int) -> Unit,
     onBack: () -> Unit = {},
     onAddClick: () -> Unit,
-    onStatsClick: () -> Unit
+    onStatsClick: () -> Unit,
+    onCreateListClick: () -> Unit   // ← NUEVO PARÁMETRO
+
+
 ) {
+
     val context = LocalContext.current
     val db = remember { AppDatabase.getDatabase(context) }
     val dao = remember { db.listaDao() }
@@ -44,17 +52,27 @@ fun SelectListScreen(
         context = context
     ) }
 
+
     var showDialog by remember { mutableStateOf(false) }
 
     var listas by remember { mutableStateOf<List<Lista>>(emptyList()) }
 
     // 🔥 MAPA GLOBAL DE MIEMBROS (SOLUCIÓN REAL)
     var miembrosPorLista by remember { mutableStateOf<Map<Int, List<String>>>(emptyMap()) }
+    val lifecycleOwner = LocalLifecycleOwner.current
 
-    // Cargar listas
-    LaunchedEffect(usuarioId) {
-        listas = repository.obtenerListasDeUsuario(dao, usuarioId)
+    LaunchedEffect(lifecycleOwner) {
+        lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
+            listas = repository.obtenerListasDeUsuario(dao, usuarioId)
+            val map = mutableMapOf<Int, List<String>>()
+            listas.forEach { lista ->
+                map[lista.id] = repository.obtenerMiembrosDeLista(dao, lista.id)
+            }
+            miembrosPorLista = map
+        }
     }
+    // Cargar listas
+
 
     // 🔥 Cargar TODOS los miembros UNA sola vez
     LaunchedEffect(listas) {
@@ -68,8 +86,21 @@ fun SelectListScreen(
     }
 
     Scaffold(
+        floatingActionButton = {       // ← AÑADE ESTE BLOQUE
+            FloatingActionButton(
+                onClick = onCreateListClick,
+                containerColor = Color(0xFFFFEB3B),
+                contentColor = Color.Black,
+                shape = RoundedCornerShape(50)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Add,
+                    contentDescription = "Crear lista"
+                )
+            }
+        },
         modifier = Modifier.fillMaxSize()
-    ) { padding ->
+    ){ padding ->
 
         Box(
             modifier = Modifier
@@ -160,6 +191,7 @@ fun SelectListScreen(
             println("Email introducido: $email")
         }
     )
+
 }
 
 @Composable

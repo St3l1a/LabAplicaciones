@@ -140,7 +140,9 @@ class MainActivity : ComponentActivity() {
                         },
                         onBack = { navController.popBackStack() },
                         onAddClick = { navController.navigate("add_item") },
-                        onStatsClick = { navController.navigate("stats") }
+                        onStatsClick = { navController.navigate("stats") },
+                        onCreateListClick = { navController.navigate("addList") }  // ← NUEVO
+
                     )
                 }
 
@@ -150,6 +152,19 @@ class MainActivity : ComponentActivity() {
 
                 composable("stats") {
                     StatisticsScreen()
+                }
+                composable("addList") {
+                    val dao = AppDatabase.getDatabase(this@MainActivity).listaDao()
+                    val repository = ListaRepository(
+                        dao = dao,
+                        db = FirebaseFirestore.getInstance(),
+                        context = this@MainActivity
+                    )
+                    AddListScreen(
+                        usuarioId = usuarioActualId,
+                        repository = repository,
+                        onBack = { navController.popBackStack() }
+                    )
                 }
             }
         }

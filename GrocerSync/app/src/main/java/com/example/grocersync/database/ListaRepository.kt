@@ -8,7 +8,7 @@ import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.flow.Flow
 
 class ListaRepository(
-    private val dao: ListaDao,
+    public val dao: ListaDao,
     private val db: FirebaseFirestore,
     private val context: Context
 ) {
