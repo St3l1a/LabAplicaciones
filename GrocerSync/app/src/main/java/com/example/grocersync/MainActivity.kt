@@ -155,8 +155,18 @@ class MainActivity : ComponentActivity() {
                     )
                 }
 
-                composable("add_item") {
-                    AddItemScreen()
+                composable("addItem/{listId}") {
+                    val context = LocalContext.current
+                    val dao = AppDatabase.getDatabase(context).listaDao()
+                    val repository = ListaRepository(
+                        dao = dao,
+                        db = FirebaseFirestore.getInstance(),
+                        context = context
+                    )
+
+                    AddItemScreen(
+                        repository = repository
+                    )
                 }
 
                 composable("stats") {
