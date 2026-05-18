@@ -93,6 +93,17 @@ class MainActivity : ComponentActivity() {
                             navController.navigate("select") {
                                 popUpTo("login") { inclusive = true }
                             }
+                        },
+                                onNavigateToSign = {
+                            navController.navigate("signup")
+                        }
+                    )
+                }
+                composable("signup") {
+                    SignScreen(
+                        // Al crear la cuenta, simplemente vuelve al login
+                        onSignSuccess = {
+                            navController.popBackStack() // quita "signup" y vuelve a "login"
                         }
                     )
                 }
