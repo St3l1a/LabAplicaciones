@@ -93,6 +93,10 @@ interface ListaDao {
     @Query("SELECT * FROM listas WHERE id = :listaId")
     fun getListaConItems(listaId: Int): Flow<ListaConItems>
 
+    // En ListaDao
+    @Query("SELECT COUNT(*) FROM listas")
+    suspend fun getListaUsuariosCount(): Int
+
 
 
 

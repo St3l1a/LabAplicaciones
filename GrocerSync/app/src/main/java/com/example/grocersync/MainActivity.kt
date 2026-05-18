@@ -176,7 +176,7 @@ class MainActivity : ComponentActivity() {
 
     private suspend fun cargarUsuariosDesdeJson() {
         val dao = AppDatabase.getDatabase(applicationContext).listaDao()
-        dao.deleteAllUsuarios()
+        if (dao.getListas().isNotEmpty()) return
 
         try {
             val json = resources.openRawResource(R.raw.users)
@@ -198,8 +198,7 @@ class MainActivity : ComponentActivity() {
 
     private suspend fun cargarListasDesdeJson() {
         val dao = AppDatabase.getDatabase(applicationContext).listaDao()
-        dao.deleteAllListas()
-        dao.deleteAllCrossRefs()
+        if (dao.getListas().isNotEmpty()) return
 
         try {
             val json = resources.openRawResource(R.raw.listas)
@@ -224,7 +223,9 @@ class MainActivity : ComponentActivity() {
 
     private suspend fun cargarListaUsuarioDesdeJson() {
         val dao = AppDatabase.getDatabase(applicationContext).listaDao()
-        dao.deleteAllListaUsuarios()
+
+        // ⚠️ Solo cargar si no hay relaciones todavía
+        if (dao.getListas().isNotEmpty()) return
 
         try {
             val json = resources.openRawResource(R.raw.listusers)
@@ -238,7 +239,6 @@ class MainActivity : ComponentActivity() {
             relaciones.forEach { dao.insertListaUsuarioCrossRef(it) }
 
             Log.d("DB", "Relaciones: ${relaciones.size}")
-
         } catch (e: Exception) {
             Log.e("DB", "Error relaciones", e)
         }
@@ -246,7 +246,7 @@ class MainActivity : ComponentActivity() {
 //a
     private suspend fun cargarItemsDesdeJson() {
         val dao = AppDatabase.getDatabase(applicationContext).listaDao()
-        dao.deleteAllItems()
+    if (dao.getListas().isNotEmpty()) return
 
         try {
             val json = resources.openRawResource(R.raw.items)
@@ -267,7 +267,10 @@ class MainActivity : ComponentActivity() {
     }
 
     private suspend fun asignarUsuarioALista(dao: ListaDao, listaId: Int, usuarioId: Int) {
+        if (dao.getListas().isNotEmpty()) return
+
         dao.insertCrossRef(
+
             ListaUsuarioCrossRef(listaId, usuarioId)
         )
     }
