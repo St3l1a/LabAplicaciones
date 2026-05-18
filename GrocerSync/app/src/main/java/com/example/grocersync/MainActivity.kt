@@ -83,8 +83,17 @@ class MainActivity : ComponentActivity() {
 
             NavHost(
                 navController = navController,
-                startDestination = "login"
+                startDestination = "splash"
             ) {
+                composable("splash") {
+                    SplashScreen(
+                        onSplashFinished = {
+                            navController.navigate("login") {
+                                popUpTo("splash") { inclusive = true }
+                            }
+                        }
+                    )
+                }
 
                 composable("login") {
                     LoginScreen(
@@ -94,7 +103,7 @@ class MainActivity : ComponentActivity() {
                                 popUpTo("login") { inclusive = true }
                             }
                         },
-                                onNavigateToSign = {
+                        onNavigateToSign = {
                             navController.navigate("signup")
                         }
                     )
