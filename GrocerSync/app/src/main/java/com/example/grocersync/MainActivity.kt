@@ -243,7 +243,7 @@ class MainActivity : ComponentActivity() {
             Log.e("DB", "Error relaciones", e)
         }
     }
-
+//a
     private suspend fun cargarItemsDesdeJson() {
         val dao = AppDatabase.getDatabase(applicationContext).listaDao()
         dao.deleteAllItems()
