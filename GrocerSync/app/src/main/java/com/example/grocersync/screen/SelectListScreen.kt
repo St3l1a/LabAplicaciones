@@ -3,6 +3,7 @@ package com.example.grocersync.ui
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -24,6 +25,7 @@ import androidx.compose.ui.unit.sp
 import com.example.grocersync.R
 import com.example.grocersync.database.Item
 import com.example.grocersync.database.ListaRepository
+import kotlinx.coroutines.launch
 
 @Composable
 fun MainListScreen(
@@ -34,13 +36,12 @@ fun MainListScreen(
 ) {
 
     var search by remember { mutableStateOf("") }
+    val scope = rememberCoroutineScope()
 
-    // 🔥 Datos desde Room
     val listaConItems by repository
         .getListaConItems(listId)
         .collectAsState(initial = null)
 
-    // 🔥 Filtrado búsqueda
     val filteredItems = listaConItems?.items?.filter {
         it.nombre.contains(search, ignoreCase = true)
     } ?: emptyList()
@@ -54,7 +55,6 @@ fun MainListScreen(
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
 
-                // 📊 Botón estadísticas
                 FloatingActionButton(
                     onClick = { onStatsClick() },
                     containerColor = Color(0xFFFFEB3B),
@@ -62,12 +62,10 @@ fun MainListScreen(
                 ) {
                     Icon(
                         painter = painterResource(id = R.drawable.graph),
-                        contentDescription = "Estadísticas",
-                        modifier = Modifier.size(24.dp)
+                        contentDescription = "Estadísticas"
                     )
                 }
 
-                // ➕ Botón añadir
                 FloatingActionButton(
                     onClick = { onAddClick() },
                     containerColor = Color(0xFFE6C6E8),
@@ -126,7 +124,6 @@ fun MainListScreen(
                     .padding(16.dp)
             ) {
 
-                // 🔥 Nombre lista desde Room
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -160,12 +157,20 @@ fun MainListScreen(
                     val unboughtItems = filteredItems.filter { !it.comprado }
                     val boughtItems = filteredItems.filter { it.comprado }
 
-                    // 🟣 NO comprados
                     items(unboughtItems) { item ->
-                        ProductCard(item)
+                        ProductCard(
+                            item = item,
+                            c = Color(0xFFFF9075),
+                            onClick = {
+                                scope.launch {
+                                    repository.updateItem(
+                                        item.copy(comprado = true)
+                                    )
+                                }
+                            }
+                        )
                     }
 
-                    // 🟡 Separador si hay comprados
                     if (boughtItems.isNotEmpty()) {
 
                         item {
@@ -174,60 +179,67 @@ fun MainListScreen(
                             Text(
                                 text = "Comprados",
                                 fontSize = 18.sp,
-                                fontWeight = FontWeight.Bold,
-                                modifier = Modifier.padding(start = 4.dp)
+                                fontWeight = FontWeight.Bold
                             )
 
                             Spacer(modifier = Modifier.height(12.dp))
                         }
 
-                        // 🟢 Comprados abajo
                         items(boughtItems) { item ->
-                            ProductCard(item)
+                            ProductCard(
+                                item = item,
+                                c = Color(0xFFB1FF8C),
+                                onClick = {
+                                    scope.launch {
+                                        repository.updateItem(
+                                            item.copy(comprado = false)
+                                        )
+                                    }
+                                }
+                            )
                         }
                     }
-
-
-
                 }
-
             }
-
         }
-
     }
-
 }
 
 @Composable
-fun ProductCard(item: Item) {
+fun ProductCard(
+    item: Item,
+    c: Color,
+    onClick: () -> Unit
+) {
 
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .background(Color(0xFFE6C6E8), RoundedCornerShape(16.dp))
+            .background(c, RoundedCornerShape(16.dp))
             .border(2.dp, Color.Black, RoundedCornerShape(16.dp))
+            .clickable { onClick() }
             .padding(16.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
 
         Column {
-
-            Text(item.nombre,
-                fontSize = 16.sp)
+            Text(item.nombre, fontSize = 16.sp)
 
             Text(
                 "Cantidad: ${item.cantidad}",
-                fontSize = 13.sp,
-                style = MaterialTheme.typography.bodySmall
+                fontSize = 13.sp
             )
-            Text("Categoria: ${item.categoria}",
-                fontSize = 13.sp)
 
+            Text(
+                "Categoria: ${item.categoria}",
+                fontSize = 13.sp
+            )
 
-            Text("Nota: ${item.nota}",
-                fontSize = 13.sp)
+            Text(
+                "Nota: ${item.nota}",
+                fontSize = 13.sp
+            )
         }
 
         Image(
@@ -236,5 +248,4 @@ fun ProductCard(item: Item) {
             modifier = Modifier.size(30.dp)
         )
     }
-
 }
