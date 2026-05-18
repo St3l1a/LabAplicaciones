@@ -55,6 +55,7 @@ class MainActivity : ComponentActivity() {
 
                 // ✔ sync SOLO cuando Room ya tiene datos
                 syncRepository.fullSync()
+
             }
         }
 
@@ -106,7 +107,11 @@ class MainActivity : ComponentActivity() {
                         ?.toIntOrNull() ?: 1
 
                     val dao = AppDatabase.getDatabase(context).listaDao()
-                    val repository = ListaRepository(dao)
+                    val repository = ListaRepository(
+                        dao = dao,
+                        db = FirebaseFirestore.getInstance(),
+                        context = context
+                    )
 
                     MainListScreen(
                         listId = listId,

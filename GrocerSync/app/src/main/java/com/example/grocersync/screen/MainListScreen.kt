@@ -24,6 +24,7 @@ import androidx.compose.ui.unit.dp
 import com.example.grocersync.database.AppDatabase
 import com.example.grocersync.database.Lista
 import com.example.grocersync.database.ListaRepository
+import com.google.firebase.firestore.FirebaseFirestore
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -37,7 +38,11 @@ fun SelectListScreen(
     val context = LocalContext.current
     val db = remember { AppDatabase.getDatabase(context) }
     val dao = remember { db.listaDao() }
-    val repository = remember { ListaRepository(dao) }
+    val repository = remember { ListaRepository(
+        dao = dao,
+        db = FirebaseFirestore.getInstance(),
+        context = context
+    ) }
 
     var showDialog by remember { mutableStateOf(false) }
 
