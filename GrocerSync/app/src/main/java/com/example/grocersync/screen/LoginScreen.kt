@@ -1,5 +1,6 @@
 package com.example.grocersync.screen
 
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -40,7 +41,9 @@ fun LoginScreen(
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var errorMessage by remember { mutableStateOf<String?>(null) }
-
+    var isLoading by remember { mutableStateOf(false) }
+    var pressed by remember { mutableStateOf(false) }
+    val scale by animateFloatAsState(if (pressed) 0.95f else 1f)
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
 
@@ -187,56 +190,68 @@ fun LoginScreen(
                                 errorMessage = "Completá todos los campos"
                                 return@Button
                             }
-                            // Deshabilitar botón mientras se procesa? (opcional)
+                            isLoading = true
+                            errorMessage = null
                             scope.launch {
                                 try {
-                                    // 1. Consultar Firestore
                                     dbFirestore.collection("users")
                                         .whereEqualTo("email", email)
                                         .get()
                                         .addOnSuccessListener { querySnapshot ->
                                             if (querySnapshot.isEmpty) {
                                                 errorMessage = "Usuario no encontrado"
+                                                isLoading = false
                                                 return@addOnSuccessListener
                                             }
                                             val document = querySnapshot.documents[0]
                                             val storedPassword = document.getString("password") ?: ""
                                             val userId = document.getLong("id")?.toInt()
-                                                ?: document.id.hashCode() // fallback si no existe
+                                                ?: document.id.hashCode()
                                             val nombre = document.getString("nombre") ?: ""
 
                                             if (password == storedPassword) {
-                                                // Login exitoso → sincronizar con Room
                                                 scope.launch(Dispatchers.IO) {
                                                     val dao = roomDb.listaDao()
                                                     val usuario = Usuario(
                                                         id = userId,
                                                         email = email,
                                                         nombre = nombre,
-                                                        password = password // si tu entidad lo guarda
+                                                        password = password
                                                     )
-                                                    dao.insertUsuario(usuario) // insertOrUpdate según necesites
-
+                                                    dao.insertUsuario(usuario)
                                                     withContext(Dispatchers.Main) {
+                                                        isLoading = false
                                                         onLoginSuccess(userId)
                                                     }
                                                 }
                                             } else {
                                                 errorMessage = "Contraseña incorrecta"
+                                                isLoading = false
                                             }
                                         }
                                         .addOnFailureListener { exception ->
                                             errorMessage = "Error de conexión: ${exception.message}"
+                                            isLoading = false
                                         }
                                 } catch (e: Exception) {
                                     errorMessage = "Error inesperado: ${e.message}"
+                                    isLoading = false
                                 }
                             }
                         },
                         modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(12.dp)
+                        shape = RoundedCornerShape(12.dp),
+                        enabled = !isLoading   // deshabilitado mientras carga
                     ) {
-                        Text("Iniciar sesión")
+                        if (isLoading) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(24.dp),
+                                color = MaterialTheme.colorScheme.onPrimary,
+                                strokeWidth = 2.dp
+                            )
+                        } else {
+                            Text("Iniciar sesión")
+                        }
                     }
 
                     // Botón Crear cuenta
