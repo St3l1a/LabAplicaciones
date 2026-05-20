@@ -28,7 +28,12 @@ import com.example.grocersync.R
 import com.example.grocersync.database.Item
 import com.example.grocersync.database.ListaRepository
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.suspendCancellableCoroutine
 import java.io.File
+import com.google.firebase.ktx.Firebase
+import com.google.firebase.storage.ktx.storage
+import kotlin.coroutines.resume
+import kotlin.coroutines.resumeWithException
 
 @Composable
 fun AddItemScreen(
@@ -216,7 +221,7 @@ fun AddItemScreen(
                                 listaId = listId
                             )
 
-                            repository.insertItem(newItem)
+                            repository.insertItemWithImage(newItem, imageUri)
 
                             Log.d("ADD_ITEM", "Item guardado: $newItem")
                             onItemAdded()
@@ -231,6 +236,43 @@ fun AddItemScreen(
                     Text("Añadir item")
                 }
             }
+        }
+    }
+}
+
+
+private fun saveImageToPermanentStorage(context: Context, tempUri: Uri): String? {
+    return try {
+        val imagesDir = File(context.filesDir, "images")
+        if (!imagesDir.exists()) imagesDir.mkdirs()
+        val fileName = "item_${System.currentTimeMillis()}.jpg"
+        val destFile = File(imagesDir, fileName)
+        context.contentResolver.openInputStream(tempUri)?.use { input ->
+            destFile.outputStream().use { output ->
+                input.copyTo(output)
+            }
+        }
+        destFile.absolutePath
+    } catch (e: Exception) {
+        e.printStackTrace()
+        null
+    }
+}
+
+private suspend fun uploadImageToFirebase(uri: Uri, itemId: Int): String? {
+    return suspendCancellableCoroutine { continuation ->
+        val storageRef = Firebase.storage.reference
+        val imageRef = storageRef.child("items/${itemId}_${System.currentTimeMillis()}.jpg")
+        val uploadTask = imageRef.putFile(uri)
+
+        uploadTask.addOnSuccessListener {
+            imageRef.downloadUrl.addOnSuccessListener { downloadUri ->
+                continuation.resume(downloadUri.toString())
+            }.addOnFailureListener { e ->
+                continuation.resumeWithException(e)
+            }
+        }.addOnFailureListener { e ->
+            continuation.resumeWithException(e)
         }
     }
 }

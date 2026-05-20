@@ -30,8 +30,6 @@ interface ListaDao {
     @Query("SELECT * FROM items WHERE listaId = :listaId")
     suspend fun getItems(listaId: Int): List<Item>
 
-    @Insert
-    suspend fun insertItem(item: Item)
 
     @Update
     suspend fun updateItem(item: Item)
@@ -89,4 +87,10 @@ interface ListaDao {
     // ✅ NUEVO: contar relaciones existentes
     @Query("SELECT COUNT(*) FROM ListaUsuarioCrossRef")
     suspend fun getCountListaUsuarioCrossRef(): Int
+    // ListaDao.kt (fragmento)
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertItem(item: Item): Long   // Devuelve el ID generado
+
+    @Query("SELECT * FROM items WHERE id = :itemId")
+    suspend fun getItemById(itemId: Int): Item?
 }

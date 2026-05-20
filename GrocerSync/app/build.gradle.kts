@@ -99,5 +99,17 @@ dependencies {
     implementation("androidx.navigation:navigation-compose:2.7.7")
 
     implementation("com.google.code.gson:gson:2.10.1")
+    implementation("io.coil-kt:coil-compose:2.6.0")
 
+    dependencies {
+        // Firebase Firestore y Storage
+        implementation(platform("com.google.firebase:firebase-bom:33.0.0"))
+        implementation("com.google.firebase:firebase-firestore")
+        implementation("com.google.firebase:firebase-storage-ktx")
+
+        // Coil para cargar imágenes desde URL
+        implementation("io.coil-kt:coil-compose:2.6.0")
+
+        // Resto de tus dependencias (Room, Compose, etc.)
+    }
 }

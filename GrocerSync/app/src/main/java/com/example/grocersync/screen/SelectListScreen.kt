@@ -15,6 +15,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
@@ -22,10 +23,12 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import coil.compose.AsyncImage
 import com.example.grocersync.R
 import com.example.grocersync.database.Item
 import com.example.grocersync.database.ListaRepository
 import kotlinx.coroutines.launch
+import java.io.File
 
 @Composable
 fun MainListScreen(
@@ -236,16 +239,21 @@ fun ProductCard(
                 fontSize = 13.sp
             )
 
-            Text(
-                "Nota: ${item.nota}",
-                fontSize = 13.sp
+        }
+
+        if (!item.localImagePath.isNullOrEmpty()) {
+            AsyncImage(
+                model = File(item.localImagePath),
+                contentDescription = null,
+                modifier = Modifier.size(60.dp).clip(RoundedCornerShape(8.dp))
+            )
+        } else {
+            Image(
+                painter = painterResource(id = R.drawable.camara),
+                contentDescription = null,
+                modifier = Modifier.size(30.dp)
             )
         }
 
-        Image(
-            painter = painterResource(id = R.drawable.camara),
-            contentDescription = null,
-            modifier = Modifier.size(30.dp)
-        )
     }
 }

@@ -12,7 +12,7 @@ import androidx.room.RoomDatabase
         Usuario::class,
         ListaUsuarioCrossRef::class
     ],
-    version = 1,
+    version = 5,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
