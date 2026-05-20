@@ -8,10 +8,10 @@ import androidx.room.PrimaryKey
 data class Item(
     @PrimaryKey(autoGenerate = true)
     val id: Int = 0,
-    val nombre: String,
-    val categoria: String,
-    val cantidad: Int,
+    val nombre: String = "",
+    val categoria: String ="",
+    val cantidad: Int = 0,
     val comprado: Boolean = false,
-    val listaId: Int,
+    val listaId: Int = 9,
     val localImagePath: String? = null   // ← ruta de la imagen en almacenamiento interno
 )

@@ -5,9 +5,6 @@ import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.setValue
-import androidx.compose.runtime.getValue
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.lifecycleScope
 import androidx.navigation.compose.NavHost
@@ -26,7 +23,6 @@ import kotlinx.coroutines.withContext
 class MainActivity : ComponentActivity() {
 
     var usuarioActualId: Int = -1
-    var isDataLoaded by mutableStateOf(false)   // Control para el Splash
 
     private lateinit var db: FirebaseFirestore
 
@@ -43,11 +39,8 @@ class MainActivity : ComponentActivity() {
                 cargarUsuariosDesdeJson()
                 cargarListasDesdeJson()
                 cargarItemsDesdeJson()
-                cargarListaUsuarioDesdeJson()  // Ahora carga relaciones correctamente
+                cargarListaUsuarioDesdeJson()
                 syncRepository.fullSync()
-            }
-            withContext(Dispatchers.Main) {
-                isDataLoaded = true
             }
         }
 
@@ -109,10 +102,10 @@ class MainActivity : ComponentActivity() {
                         usuarioId = usuarioActualId,
                         onListSelected = { listaId -> navController.navigate("main/$listaId") },
                         onBack = { navController.popBackStack() },
-                        onAddClick = { navController.navigate("add_item") },
-                        onStatsClick = { navController.navigate("stats") },
+                        onAddClick = {},
+                        onStatsClick = {},
                         onCreateListClick = { navController.navigate("addList") },
-                        navController = navController  // Pasamos navController para el refresco
+                        navController = navController
                     )
                 }
 
@@ -128,11 +121,14 @@ class MainActivity : ComponentActivity() {
                     AddItemScreen(
                         repository = repository,
                         listId = listId,
-                        onItemAdded = { navController.popBackStack() }   // ← CIERRA LA PANTALLA
+                        onItemAdded = { navController.popBackStack() }
                     )
                 }
 
-                composable("stats") { StatisticsScreen() }
+                composable("stats/{listId}") { backStackEntry ->
+                    val listId = backStackEntry.arguments?.getString("listId")?.toIntOrNull() ?: 1
+                    StatisticsScreen()
+                }
 
                 composable("addList") {
                     val dao = AppDatabase.getDatabase(this@MainActivity).listaDao()
@@ -151,7 +147,7 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    // ================== CARGA DE DATOS ==================
+    // ================== CARGA DE DATOS JSON ==================
     private suspend fun cargarUsuariosDesdeJson() {
         val dao = AppDatabase.getDatabase(applicationContext).listaDao()
         if (dao.getUsuarios().isNotEmpty()) return
@@ -185,7 +181,6 @@ class MainActivity : ComponentActivity() {
         } catch (e: Exception) { Log.e("DB", "Error items", e) }
     }
 
-    // ✅ Corregido: solo carga si no existen relaciones
     private suspend fun cargarListaUsuarioDesdeJson() {
         val dao = AppDatabase.getDatabase(applicationContext).listaDao()
         if (dao.getCountListaUsuarioCrossRef() > 0) return

@@ -1,5 +1,6 @@
 package com.example.grocersync.ui
 
+import android.util.Log
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -37,27 +38,37 @@ fun MainListScreen(
     onAddClick: () -> Unit,
     onStatsClick: () -> Unit
 ) {
-
     var search by remember { mutableStateOf("") }
     val scope = rememberCoroutineScope()
+    var isLoading by remember { mutableStateOf(false) }
 
-    val listaConItems by repository
-        .getListaConItems(listId)
-        .collectAsState(initial = null)
+    // 🔄 Sincronizar ítems desde Firestore cada vez que se entra a la pantalla
+    LaunchedEffect(listId) {
+            try {
+                isLoading = true
+                repository.syncItemsFromFirestore(listId)
+            } catch (e: Exception) {
+                Log.e("ERROR", "Fallo en syncItemsFromFirestore", e)
+            } finally {
+                isLoading = false
 
-    val filteredItems = listaConItems?.items?.filter {
+        }
+    }
+
+    // Observar cambios en tiempo real (Room + Flow)
+    val items by repository.getItemsFlow(listId).collectAsState(initial = emptyList())
+
+    val filteredItems = items.filter {
         it.nombre.contains(search, ignoreCase = true)
-    } ?: emptyList()
+    }
 
     Scaffold(
         modifier = Modifier.fillMaxSize(),
-
         floatingActionButton = {
             Column(
                 horizontalAlignment = Alignment.End,
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-
                 FloatingActionButton(
                     onClick = { onStatsClick() },
                     containerColor = Color(0xFFFFEB3B),
@@ -68,7 +79,6 @@ fun MainListScreen(
                         contentDescription = "Estadísticas"
                     )
                 }
-
                 FloatingActionButton(
                     onClick = { onAddClick() },
                     containerColor = Color(0xFFE6C6E8),
@@ -83,23 +93,15 @@ fun MainListScreen(
         },
         floatingActionButtonPosition = FabPosition.End
     ) { padding ->
-
         Box(
             modifier = Modifier
                 .fillMaxSize()
                 .background(Color(0xFFCBE8FF))
                 .drawBehind {
-
                     val colors = listOf(
-                        Color(0xFF90CAF9),
-                        Color(0xFFA5D6A7),
-                        Color(0xFFFFCC80),
-                        Color(0xFFCE93D8),
-                        Color(0xFF80DEEA),
-                        Color(0xFFFFAB91),
-                        Color(0xFFAED581)
+                        Color(0xFF90CAF9), Color(0xFFA5D6A7), Color(0xFFFFCC80),
+                        Color(0xFFCE93D8), Color(0xFF80DEEA), Color(0xFFFFAB91), Color(0xFFAED581)
                     )
-
                     val bubbles = listOf(
                         Triple(size.width * 0.15f, size.height * 0.20f, 350f),
                         Triple(size.width * 0.80f, size.height * 0.18f, 350f),
@@ -109,7 +111,6 @@ fun MainListScreen(
                         Triple(size.width * 0.50f, size.height * 0.10f, 350f),
                         Triple(size.width * 0.30f, size.height * 0.50f, 350f)
                     )
-
                     bubbles.forEachIndexed { i, (x, y, r) ->
                         drawCircle(
                             color = colors[i % colors.size].copy(alpha = 0.35f),
@@ -119,30 +120,22 @@ fun MainListScreen(
                     }
                 }
         ) {
-
             Column(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(padding)
                     .padding(16.dp)
             ) {
-
                 Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .background(Color(0xFFFFEB3B)),
+                    modifier = Modifier.fillMaxWidth().background(Color(0xFFFFEB3B)),
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
-                        text = listaConItems?.lista?.nombre ?: "Mi lista",
-                        style = MaterialTheme.typography.headlineLarge.copy(
-                            fontWeight = FontWeight.Bold
-                        )
+                        text = "Mi lista",
+                        style = MaterialTheme.typography.headlineLarge.copy(fontWeight = FontWeight.Bold)
                     )
                 }
-
                 Spacer(modifier = Modifier.height(16.dp))
-
                 OutlinedTextField(
                     value = search,
                     onValueChange = { search = it },
@@ -150,56 +143,51 @@ fun MainListScreen(
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(15.dp)
                 )
-
                 Spacer(modifier = Modifier.height(16.dp))
-
-                LazyColumn(
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-
-                    val unboughtItems = filteredItems.filter { !it.comprado }
-                    val boughtItems = filteredItems.filter { it.comprado }
-
-                    items(unboughtItems) { item ->
-                        ProductCard(
-                            item = item,
-                            c = Color(0xFFFF9075),
-                            onClick = {
-                                scope.launch {
-                                    repository.updateItem(
-                                        item.copy(comprado = true)
+                when {
+                    isLoading -> {
+                        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                            CircularProgressIndicator()
+                        }
+                    }
+                    filteredItems.isEmpty() -> {
+                        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                            Text("No hay productos en esta lista")
+                        }
+                    }
+                    else -> {
+                        LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                            val unboughtItems = filteredItems.filter { !it.comprado }
+                            val boughtItems = filteredItems.filter { it.comprado }
+                            items(unboughtItems) { item ->
+                                ProductCard(
+                                    item = item,
+                                    c = Color(0xFFFF9075),
+                                    onClick = {
+                                        scope.launch {
+                                            repository.updateItem(item.copy(comprado = true))
+                                        }
+                                    }
+                                )
+                            }
+                            if (boughtItems.isNotEmpty()) {
+                                item {
+                                    Spacer(modifier = Modifier.height(24.dp))
+                                    Text(text = "Comprados", fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                                    Spacer(modifier = Modifier.height(12.dp))
+                                }
+                                items(boughtItems) { item ->
+                                    ProductCard(
+                                        item = item,
+                                        c = Color(0xFFB1FF8C),
+                                        onClick = {
+                                            scope.launch {
+                                                repository.updateItem(item.copy(comprado = false))
+                                            }
+                                        }
                                     )
                                 }
                             }
-                        )
-                    }
-
-                    if (boughtItems.isNotEmpty()) {
-
-                        item {
-                            Spacer(modifier = Modifier.height(24.dp))
-
-                            Text(
-                                text = "Comprados",
-                                fontSize = 18.sp,
-                                fontWeight = FontWeight.Bold
-                            )
-
-                            Spacer(modifier = Modifier.height(12.dp))
-                        }
-
-                        items(boughtItems) { item ->
-                            ProductCard(
-                                item = item,
-                                c = Color(0xFFB1FF8C),
-                                onClick = {
-                                    scope.launch {
-                                        repository.updateItem(
-                                            item.copy(comprado = false)
-                                        )
-                                    }
-                                }
-                            )
                         }
                     }
                 }
@@ -209,12 +197,7 @@ fun MainListScreen(
 }
 
 @Composable
-fun ProductCard(
-    item: Item,
-    c: Color,
-    onClick: () -> Unit
-) {
-
+fun ProductCard(item: Item, c: Color, onClick: () -> Unit) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -225,22 +208,11 @@ fun ProductCard(
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
-
         Column {
             Text(item.nombre, fontSize = 16.sp)
-
-            Text(
-                "Cantidad: ${item.cantidad}",
-                fontSize = 13.sp
-            )
-
-            Text(
-                "Categoria: ${item.categoria}",
-                fontSize = 13.sp
-            )
-
+            Text("Cantidad: ${item.cantidad}", fontSize = 13.sp)
+            Text("Categoria: ${item.categoria}", fontSize = 13.sp)
         }
-
         if (!item.localImagePath.isNullOrEmpty()) {
             AsyncImage(
                 model = File(item.localImagePath),
@@ -254,6 +226,5 @@ fun ProductCard(
                 modifier = Modifier.size(30.dp)
             )
         }
-
     }
 }

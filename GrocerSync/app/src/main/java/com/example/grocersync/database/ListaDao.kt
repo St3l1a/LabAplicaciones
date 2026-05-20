@@ -6,7 +6,7 @@ import kotlinx.coroutines.flow.Flow
 @Dao
 interface ListaDao {
 
-    // 🔹 LISTAS
+    // LISTAS
     @Query("SELECT * FROM listas")
     suspend fun getListas(): List<Lista>
 
@@ -15,7 +15,7 @@ interface ListaDao {
     suspend fun getListaConUsuarios(listaId: Int): ListaConUsuarios?
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insertLista(lista: Lista)
+    suspend fun insertLista(lista: Lista): Long
 
     @Delete
     suspend fun deleteLista(lista: Lista)
@@ -23,13 +23,18 @@ interface ListaDao {
     @Query("DELETE FROM listas")
     suspend fun deleteAllListas()
 
-    // 🔹 ITEMS
+    // ITEMS
     @Query("SELECT * FROM items")
     suspend fun getAllItems(): List<Item>
 
     @Query("SELECT * FROM items WHERE listaId = :listaId")
     suspend fun getItems(listaId: Int): List<Item>
 
+    @Query("SELECT * FROM items WHERE listaId = :listaId")
+    fun getItemsFlow(listaId: Int): Flow<List<Item>>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertItem(item: Item): Long
 
     @Update
     suspend fun updateItem(item: Item)
@@ -40,7 +45,10 @@ interface ListaDao {
     @Query("DELETE FROM items")
     suspend fun deleteAllItems()
 
-    // 🔹 RELACIÓN LISTA-USUARIO
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertOrUpdateItem(item: Item)
+
+    // RELACIÓN LISTA-USUARIO
     @Transaction
     @Query("SELECT * FROM listas")
     suspend fun getListasConItems(): List<ListaConItems>
@@ -51,7 +59,7 @@ interface ListaDao {
     @Query("DELETE FROM ListaUsuarioCrossRef")
     suspend fun deleteAllCrossRefs()
 
-    // 🔹 USUARIOS
+    // USUARIOS
     @Query("DELETE FROM usuarios")
     suspend fun deleteAllUsuarios()
 
@@ -67,12 +75,10 @@ interface ListaDao {
     @Query("DELETE FROM listausuariocrossref")
     suspend fun deleteAllListaUsuarios()
 
-    // 🔹 OBTENER LISTAS CON USUARIOS
     @Transaction
     @Query("SELECT * FROM listas")
     suspend fun getListasConUsuarios(): List<ListaConUsuarios>
 
-    // 🔐 LOGIN
     @Query("SELECT * FROM usuarios WHERE email = :email AND password = :password LIMIT 1")
     suspend fun login(email: String, password: String): Usuario?
 
@@ -84,12 +90,8 @@ interface ListaDao {
     @Query("SELECT * FROM listas WHERE id = :listaId")
     fun getListaConItems(listaId: Int): Flow<ListaConItems>
 
-    // ✅ NUEVO: contar relaciones existentes
     @Query("SELECT COUNT(*) FROM ListaUsuarioCrossRef")
     suspend fun getCountListaUsuarioCrossRef(): Int
-    // ListaDao.kt (fragmento)
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insertItem(item: Item): Long   // Devuelve el ID generado
 
     @Query("SELECT * FROM items WHERE id = :itemId")
     suspend fun getItemById(itemId: Int): Item?
