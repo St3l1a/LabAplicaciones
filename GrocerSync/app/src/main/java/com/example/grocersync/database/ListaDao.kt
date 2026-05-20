@@ -90,9 +90,40 @@ interface ListaDao {
     @Query("SELECT * FROM listas WHERE id = :listaId")
     fun getListaConItems(listaId: Int): Flow<ListaConItems>
 
+
     @Query("SELECT COUNT(*) FROM ListaUsuarioCrossRef")
     suspend fun getCountListaUsuarioCrossRef(): Int
 
     @Query("SELECT * FROM items WHERE id = :itemId")
     suspend fun getItemById(itemId: Int): Item?
+
+    @Query("SELECT * FROM usuarios WHERE email = :email LIMIT 1")
+    suspend fun getUsuarioByEmail(email: String): Usuario?
+
+    @Query("""
+    SELECT DISTINCT l.* 
+    FROM listas l
+    LEFT JOIN ListaUsuarioCrossRef lc ON l.id = lc.listaId
+    WHERE l.idCreador = :usuarioId OR lc.usuarioId = :usuarioId
+""")
+    fun getListasDeUsuario(usuarioId: Int): Flow<List<Lista>>
+
+    @Query("""
+    SELECT DISTINCT l.* 
+    FROM listas l
+    LEFT JOIN ListaUsuarioCrossRef lc ON l.id = lc.listaId
+    WHERE l.idCreador = :usuarioId OR lc.usuarioId = :usuarioId
+""")
+    fun getListasDelUsuario(usuarioId: Int): Flow<List<Lista>>
+
+    @Query("""
+    SELECT u.nombre 
+    FROM usuarios u
+    INNER JOIN ListaUsuarioCrossRef lc ON u.id = lc.usuarioId
+    WHERE lc.listaId = :listaId
+""")
+    fun getMiembrosDeLista(listaId: Int): Flow<List<String>>
+
+    @Query("DELETE FROM ListaUsuarioCrossRef WHERE listaId = :listaId AND usuarioId = :usuarioId")
+    suspend fun deleteListaUsuarioCrossRef(listaId: Int, usuarioId: Int)
 }

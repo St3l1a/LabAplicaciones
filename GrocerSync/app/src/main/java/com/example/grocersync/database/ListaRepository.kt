@@ -5,7 +5,11 @@ import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
 import android.net.Uri
 import android.util.Log
+import com.google.firebase.firestore.DocumentChange
 import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.ListenerRegistration
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
@@ -18,7 +22,52 @@ class ListaRepository(
     private val db: FirebaseFirestore,
     private val context: Context
 ) {
+    private var relationsListener: ListenerRegistration? = null  // solo una declaración
 
+    /**
+     * Inicia la escucha en Firestore para la colección "listaUsuarios"
+     * Cada cambio se guarda en Room, y los Flows del DAO notificarán a la UI.
+     */
+    fun startListeningToRelations() {
+        relationsListener?.remove()
+        relationsListener = db.collection("listaUsuarios")
+            .addSnapshotListener { snapshot, error ->
+                if (error != null) {
+                    Log.e("FIREBASE", "Error en listener", error)
+                    return@addSnapshotListener
+                }
+                snapshot?.documentChanges?.forEach { change ->
+                    val crossRef = change.document.toObject(ListaUsuarioCrossRef::class.java)
+                    when (change.type) {
+                        DocumentChange.Type.ADDED, DocumentChange.Type.MODIFIED -> {
+                            CoroutineScope(Dispatchers.IO).launch {
+                                dao.insertListaUsuarioCrossRef(crossRef)
+                                Log.d("SYNC", "Relación añadida/modificada: ${crossRef.listaId} - ${crossRef.usuarioId}")
+                            }
+                        }
+                        DocumentChange.Type.REMOVED -> {
+                            CoroutineScope(Dispatchers.IO).launch {
+                                dao.deleteListaUsuarioCrossRef(crossRef.listaId, crossRef.usuarioId)
+                                Log.d("SYNC", "Relación eliminada")
+                            }
+                        }
+                    }
+                }
+            }
+    }
+
+    fun stopListeningToRelations() {
+        relationsListener?.remove()
+    }
+
+    // Flows expuestos a la UI
+    fun obtenerListasDeUsuario(usuarioId: Int): Flow<List<Lista>> =
+        dao.getListasDelUsuario(usuarioId)
+
+    fun obtenerMiembrosDeLista(listaId: Int): Flow<List<String>> =
+        dao.getMiembrosDeLista(listaId)
+
+    // ========== RESTANTE DEL REPOSITORIO (igual que antes, sin duplicados) ==========
     private fun hayInternet(): Boolean {
         val connectivityManager = context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
         val network = connectivityManager.activeNetwork ?: return false
@@ -26,7 +75,6 @@ class ListaRepository(
         return capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
     }
 
-    // ========== LISTAS ==========
     suspend fun getListas() = dao.getListas()
 
     suspend fun insertLista(lista: Lista, usuarioCreadorId: Int): Long {
@@ -48,7 +96,6 @@ class ListaRepository(
         }
     }
 
-    // ========== ITEMS ==========
     suspend fun getItems(listaId: Int) = dao.getItems(listaId)
     fun getItemsFlow(listaId: Int): Flow<List<Item>> = dao.getItemsFlow(listaId)
 
@@ -96,7 +143,6 @@ class ListaRepository(
     }
 
     suspend fun deleteItem(item: Item) {
-        // Borrar imagen local si existe
         item.localImagePath?.let { path ->
             try { File(path).delete() } catch (_: Exception) {}
         }
@@ -106,28 +152,21 @@ class ListaRepository(
         }
     }
 
-    // ========== SINCRONIZACIÓN (DESDE FIRESTORE A ROOM) ==========
     suspend fun syncItemsFromFirestore(listaId: Int) {
         if (!hayInternet()) return
-
         suspendCancellableCoroutine<Unit> { continuation ->
-
             db.collection("items")
                 .whereEqualTo("listaId", listaId)
                 .get()
                 .addOnSuccessListener { snapshot ->
-
                     val itemsFromFirestore = snapshot.documents.mapNotNull { doc ->
                         doc.toObject(Item::class.java)
                     }
-
-                    // 🔥 AQUÍ la clave: lanzar corrutina
-                    kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).launch {
+                    CoroutineScope(Dispatchers.IO).launch {
                         itemsFromFirestore.forEach { item ->
                             dao.insertOrUpdateItem(item.copy(localImagePath = null))
                         }
                         Log.d("SYNC", "Sincronizados ${itemsFromFirestore.size} items")
-
                         continuation.resume(Unit)
                     }
                 }
@@ -137,7 +176,6 @@ class ListaRepository(
         }
     }
 
-    // ========== SYNC SUBIDA (LOCAL -> FIRESTORE) ==========
     suspend fun syncPendingData() {
         if (!hayInternet()) return
         dao.getListas().forEach { lista ->
@@ -152,7 +190,6 @@ class ListaRepository(
         Log.d("FIREBASE", "SYNC COMPLETO")
     }
 
-    // ========== RELACIONES Y FLUJOS ==========
     suspend fun getListasConItems() = dao.getListasConItems()
     suspend fun login(email: String, password: String): Usuario? = dao.login(email, password)
     suspend fun obtenerListasDeUsuario(dao: ListaDao, usuarioId: Int): List<Lista> {
@@ -162,4 +199,49 @@ class ListaRepository(
         return dao.getListaConUsuarios(id)?.usuarios?.map { it.nombre } ?: emptyList()
     }
     fun getListaConItems(listaId: Int): Flow<ListaConItems> = dao.getListaConItems(listaId)
+
+    suspend fun addMemberToList(listaId: Int, userEmail: String): Boolean {
+        val usuario = dao.getUsuarioByEmail(userEmail) ?: return false
+        val existing = dao.getListaConUsuarios(listaId)?.usuarios?.any { it.id == usuario.id } == true
+        if (existing) return false
+
+        val crossRef = ListaUsuarioCrossRef(listaId, usuario.id)
+        dao.insertListaUsuarioCrossRef(crossRef)
+
+        if (hayInternet()) {
+            db.collection("listaUsuarios")
+                .document("${listaId}_${usuario.id}")
+                .set(crossRef)
+                .addOnSuccessListener { Log.d("SHARE", "Miembro añadido a Firestore") }
+                .addOnFailureListener { Log.e("SHARE", "Error al subir relación", it) }
+        }
+        return true
+    }
+
+    suspend fun syncRelationsFromFirestore() {
+        if (!hayInternet()) return
+        suspendCancellableCoroutine<Unit> { continuation ->
+            db.collection("listaUsuarios").get()
+                .addOnSuccessListener { snapshot ->
+                    val relaciones = mutableListOf<ListaUsuarioCrossRef>()
+                    for (document in snapshot.documents) {
+                        val crossRef = document.toObject(ListaUsuarioCrossRef::class.java)
+                        if (crossRef != null) {
+                            relaciones.add(crossRef)
+                        }
+                    }
+                    CoroutineScope(Dispatchers.IO).launch {
+                        relaciones.forEach { crossRef ->
+                            dao.insertListaUsuarioCrossRef(crossRef)
+                        }
+                        Log.d("SYNC", "Relaciones sincronizadas: ${relaciones.size}")
+                        continuation.resume(Unit)
+                    }
+                }
+                .addOnFailureListener { e ->
+                    Log.e("SYNC", "Error sync relaciones", e)
+                    continuation.resumeWithException(e)
+                }
+        }
+    }
 }
