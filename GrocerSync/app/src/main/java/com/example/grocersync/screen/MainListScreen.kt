@@ -98,6 +98,7 @@ fun SelectListScreen(
                 Icon(Icons.Default.Add, contentDescription = "Crear lista")
             }
         },
+        floatingActionButtonPosition = FabPosition.Center, // ← centrar el botón
         modifier = Modifier.fillMaxSize()
     ) { padding ->
         Box(

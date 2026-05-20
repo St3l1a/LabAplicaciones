@@ -117,7 +117,7 @@ interface ListaDao {
     fun getListasDelUsuario(usuarioId: Int): Flow<List<Lista>>
 
     @Query("""
-    SELECT u.nombre 
+    SELECT DISTINCT u.nombre 
     FROM usuarios u
     INNER JOIN ListaUsuarioCrossRef lc ON u.id = lc.usuarioId
     WHERE lc.listaId = :listaId

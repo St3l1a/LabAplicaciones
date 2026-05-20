@@ -78,13 +78,18 @@ class ListaRepository(
     suspend fun getListas() = dao.getListas()
 
     suspend fun insertLista(lista: Lista, usuarioCreadorId: Int): Long {
+        // 1. Insertar la lista
         val id = dao.insertLista(lista)
-        val crossRef = ListaUsuarioCrossRef(lista.id, usuarioCreadorId)
-        dao.insertListaUsuarioCrossRef(crossRef)
+        // 2. Relación creador (necesaria para que aparezca como miembro)
+        val crossRefCreador = ListaUsuarioCrossRef(lista.id, usuarioCreadorId)
+        dao.insertListaUsuarioCrossRef(crossRefCreador)
+        // 3. Si hay internet, subir lista y relación a Firestore
         if (hayInternet()) {
             db.collection("listas").document(lista.id.toString()).set(lista)
-                .addOnSuccessListener { Log.d("FIREBASE", "Lista subida") }
-                .addOnFailureListener { Log.e("FIREBASE", "Error lista") }
+            db.collection("listaUsuarios")
+                .document("${lista.id}_$usuarioCreadorId")
+                .set(crossRefCreador)
+                .addOnSuccessListener { Log.d("FIREBASE", "Relación creador subida") }
         }
         return id
     }
@@ -244,4 +249,6 @@ class ListaRepository(
                 }
         }
     }
+
+
 }
