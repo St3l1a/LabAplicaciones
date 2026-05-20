@@ -44,14 +44,13 @@ fun MainListScreen(
 
     // 🔄 Sincronizar ítems desde Firestore cada vez que se entra a la pantalla
     LaunchedEffect(listId) {
-            try {
-                isLoading = true
-                repository.syncItemsFromFirestore(listId)
-            } catch (e: Exception) {
-                Log.e("ERROR", "Fallo en syncItemsFromFirestore", e)
-            } finally {
-                isLoading = false
-
+        try {
+            isLoading = true
+            repository.syncItemsFromFirestore(listId)
+        } catch (e: Exception) {
+            Log.e("ERROR", "Fallo en syncItemsFromFirestore", e)
+        } finally {
+            isLoading = false
         }
     }
 
@@ -72,21 +71,25 @@ fun MainListScreen(
                 FloatingActionButton(
                     onClick = { onStatsClick() },
                     containerColor = Color(0xFFFFEB3B),
-                    shape = CircleShape
+                    shape = CircleShape,
+                    modifier = Modifier.size(56.dp) // Mismo tamaño que el botón añadir
                 ) {
                     Icon(
                         painter = painterResource(id = R.drawable.graph),
-                        contentDescription = "Estadísticas"
+                        contentDescription = "Estadísticas",
+                        modifier = Modifier.size(24.dp)
                     )
                 }
                 FloatingActionButton(
                     onClick = { onAddClick() },
                     containerColor = Color(0xFFE6C6E8),
-                    shape = CircleShape
+                    shape = CircleShape,
+                    modifier = Modifier.size(56.dp)
                 ) {
                     Icon(
                         imageVector = Icons.Default.Add,
-                        contentDescription = "Añadir"
+                        contentDescription = "Añadir",
+                        modifier = Modifier.size(24.dp)
                     )
                 }
             }
