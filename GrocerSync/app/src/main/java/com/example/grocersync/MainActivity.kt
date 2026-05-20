@@ -5,6 +5,8 @@ import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.lifecycleScope
 import androidx.navigation.compose.NavHost
@@ -93,8 +95,9 @@ class MainActivity : ComponentActivity() {
                         listId = listId,
                         repository = repository,
                         onAddClick = { navController.navigate("addItem/$listId") },
-                        onStatsClick = { navController.navigate("stats/$listId") }
+                        onStatsClick = { navController.navigate("statistics/$listId") }
                     )
+
                 }
 
                 composable("select") {
@@ -125,9 +128,18 @@ class MainActivity : ComponentActivity() {
                     )
                 }
 
-                composable("stats/{listId}") { backStackEntry ->
-                    val listId = backStackEntry.arguments?.getString("listId")?.toIntOrNull() ?: 1
-                    StatisticsScreen()
+                composable("statistics/{listId}") { backStackEntry ->
+                    val context = LocalContext.current
+                    val dao = AppDatabase.getDatabase(context).listaDao()
+                    val repository = ListaRepository(
+                        dao = dao,
+                        db = FirebaseFirestore.getInstance(),
+                        context = context
+                    )
+
+                    val listId = backStackEntry.arguments?.getString("listId")?.toInt() ?: return@composable
+                    val items by repository.getItemsFlow(listId).collectAsState(initial = emptyList())
+                    StatisticsScreen(items = items)
                 }
 
                 composable("addList") {

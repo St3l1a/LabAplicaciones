@@ -69,7 +69,7 @@ fun MainListScreen(
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 FloatingActionButton(
-                    onClick = { onStatsClick() },
+                    onClick = onStatsClick,
                     containerColor = Color(0xFFFFEB3B),
                     shape = CircleShape,
                     modifier = Modifier.size(56.dp) // Mismo tamaño que el botón añadir

@@ -15,56 +15,62 @@ import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.grocersync.ui.theme.GrocerSyncTheme
+import com.example.grocersync.database.Item
 
 data class ProductStat(
     val name: String,
     val quantity: Int,
-    val emoji: String
+    val emoji: String   // puedes asignar un emoji según categoría o dejar fijo
 )
 
-val mockTopProducts = listOf(
-    ProductStat("Leche entera", 24, "🥛"),
-    ProductStat("Pan de molde", 18, "🍞"),
-    ProductStat("Huevos (docena)", 15, "🥚"),
-    ProductStat("Tomate frito", 13, "🍅"),
-    ProductStat("Pasta espagueti", 11, "🍝"),
-    ProductStat("Zumo de naranja", 10, "🍊"),
-    ProductStat("Yogur natural", 9, "🫙"),
-    ProductStat("Detergente ropa", 8, "🧺"),
-    ProductStat("Arroz largo", 7, "🍚"),
-    ProductStat("Papel higiénico", 6, "🧻")
-)
+// 📊 Calcula el Top 10 a partir de los ítems reales
+private fun computeTopProducts(items: List<Item>): List<ProductStat> {
+    return items
+        .groupBy { it.nombre }
+        .map { (name, group) ->
+            ProductStat(
+                name = name,
+                quantity = group.sumOf { it.cantidad },
+                emoji = getEmojiForCategory(group.firstOrNull()?.categoria ?: "")
+            )
+        }
+        .sortedByDescending { it.quantity }
+        .take(10)
+}
 
-val rankColors = listOf(
-    Color(0xFFFFD700), // 🥇 Oro
-    Color(0xFFB0BEC5), // 🥈 Plata
-    Color(0xFFBF8970), // 🥉 Bronce
-)
+// 🎨 Asigna un emoji según la categoría (puedes personalizarlo)
+private fun getEmojiForCategory(category: String): String {
+    return when (category.lowercase()) {
+        "lácteos" -> "🥛"
+        "panadería" -> "🍞"
+        "huevos" -> "🥚"
+        "verduras" -> "🥦"
+        "frutas" -> "🍎"
+        "conservas" -> "🥫"
+        "pastas" -> "🍝"
+        "bebidas" -> "🥤"
+        "limpieza" -> "🧼"
+        else -> "🛒"
+    }
+}
 
 @Composable
-fun StatisticsScreen() {
-
-    val maxQty = mockTopProducts.maxOf { it.quantity }.toFloat()
+fun StatisticsScreen(items: List<Item>) {
+    val topProducts = computeTopProducts(items)
+    val maxQty = topProducts.maxOfOrNull { it.quantity }?.toFloat() ?: 1f
 
     Scaffold(modifier = Modifier.fillMaxSize()) { padding ->
-
         Box(
             modifier = Modifier
                 .fillMaxSize()
                 .background(Color(0xFFCBE8FF))
                 .drawBehind {
+                    // Mismas burbujas decorativas que en MainListScreen
                     val colors = listOf(
-                        Color(0xFF90CAF9),
-                        Color(0xFFA5D6A7),
-                        Color(0xFFFFCC80),
-                        Color(0xFFCE93D8),
-                        Color(0xFF80DEEA),
-                        Color(0xFFFFAB91),
-                        Color(0xFFAED581)
+                        Color(0xFF90CAF9), Color(0xFFA5D6A7), Color(0xFFFFCC80),
+                        Color(0xFFCE93D8), Color(0xFF80DEEA), Color(0xFFFFAB91), Color(0xFFAED581)
                     )
                     val bubbles = listOf(
                         Triple(size.width * 0.15f, size.height * 0.10f, 300f),
@@ -87,10 +93,10 @@ fun StatisticsScreen() {
             Column(
                 modifier = Modifier
                     .fillMaxSize()
+                    .padding(padding)
                     .padding(24.dp)
             ) {
-
-                // 🟡 TÍTULO
+                // Título
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -120,16 +126,41 @@ fun StatisticsScreen() {
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                // 📋 LISTA
-                LazyColumn(
-                    verticalArrangement = Arrangement.spacedBy(10.dp)
-                ) {
-                    itemsIndexed(mockTopProducts) { index, product ->
-                        ProductStatRow(
-                            rank = index + 1,
-                            product = product,
-                            maxQty = maxQty
-                        )
+                when {
+                    items.isEmpty() -> {
+                        Box(
+                            modifier = Modifier.fillMaxSize(),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = "Aún no hay productos en tu lista.\n¡Agrega algunos para ver estadísticas!",
+                                style = MaterialTheme.typography.bodyLarge
+                            )
+                        }
+                    }
+                    topProducts.isEmpty() -> {
+                        Box(
+                            modifier = Modifier.fillMaxSize(),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = "No hay suficientes datos para mostrar estadísticas.",
+                                style = MaterialTheme.typography.bodyLarge
+                            )
+                        }
+                    }
+                    else -> {
+                        LazyColumn(
+                            verticalArrangement = Arrangement.spacedBy(10.dp)
+                        ) {
+                            itemsIndexed(topProducts) { index, product ->
+                                ProductStatRow(
+                                    rank = index + 1,
+                                    product = product,
+                                    maxQty = maxQty
+                                )
+                            }
+                        }
                     }
                 }
             }
@@ -139,7 +170,6 @@ fun StatisticsScreen() {
 
 @Composable
 fun ProductStatRow(rank: Int, product: ProductStat, maxQty: Float) {
-
     val barColor = when (rank) {
         1 -> Color(0xFFFFD700)
         2 -> Color(0xFFB0BEC5)
@@ -155,8 +185,7 @@ fun ProductStatRow(rank: Int, product: ProductStat, maxQty: Float) {
     }
 
     val badgeText = when (rank) {
-        1 -> Color.Black
-        2 -> Color.Black
+        1, 2 -> Color.Black
         3 -> Color.White
         else -> Color(0xFF1565C0)
     }
@@ -170,12 +199,10 @@ fun ProductStatRow(rank: Int, product: ProductStat, maxQty: Float) {
         modifier = Modifier.fillMaxWidth()
     ) {
         Column(modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp)) {
-
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(10.dp)
             ) {
-                // Badge de posición
                 Box(
                     modifier = Modifier
                         .size(32.dp)
@@ -191,7 +218,6 @@ fun ProductStatRow(rank: Int, product: ProductStat, maxQty: Float) {
                     )
                 }
 
-                // Emoji + Nombre
                 Text(text = product.emoji, fontSize = 22.sp)
 
                 Text(
@@ -202,7 +228,6 @@ fun ProductStatRow(rank: Int, product: ProductStat, maxQty: Float) {
                     modifier = Modifier.weight(1f)
                 )
 
-                // Cantidad
                 Text(
                     text = "${product.quantity}x",
                     style = MaterialTheme.typography.bodyMedium.copy(
@@ -214,7 +239,6 @@ fun ProductStatRow(rank: Int, product: ProductStat, maxQty: Float) {
 
             Spacer(modifier = Modifier.height(6.dp))
 
-            // Barra de progreso
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -231,13 +255,5 @@ fun ProductStatRow(rank: Int, product: ProductStat, maxQty: Float) {
                 )
             }
         }
-    }
-}
-
-@Preview(showBackground = true, showSystemUi = true)
-@Composable
-fun StatisticsPreview() {
-    GrocerSyncTheme {
-        StatisticsScreen()
     }
 }
