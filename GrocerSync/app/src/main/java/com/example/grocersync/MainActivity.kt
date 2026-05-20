@@ -5,6 +5,9 @@ import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.lifecycleScope
 import androidx.navigation.compose.NavHost
@@ -23,68 +26,41 @@ import kotlinx.coroutines.withContext
 class MainActivity : ComponentActivity() {
 
     var usuarioActualId: Int = -1
+    var isDataLoaded by mutableStateOf(false)   // Control para el Splash
 
-    // ✔ Firebase bien declarado (GLOBAL)
     private lateinit var db: FirebaseFirestore
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 
-        // =========================
-        // 1. FIREBASE INIT
-        // =========================
         db = FirebaseFirestore.getInstance()
-
-        // =========================
-        // 2. LOCAL DB + SYNC
-        // =========================
         val localDb = AppDatabase.getDatabase(this)
         val syncRepository = SyncRepository(db, localDb.listaDao())
 
-        // =========================
-        // 3. LOAD LOCAL DATA FIRST
-        // =========================
         lifecycleScope.launch {
             withContext(Dispatchers.IO) {
-
                 cargarUsuariosDesdeJson()
                 cargarListasDesdeJson()
                 cargarItemsDesdeJson()
-                cargarListaUsuarioDesdeJson()
-
-                // ✔ sync SOLO cuando Room ya tiene datos
+                cargarListaUsuarioDesdeJson()  // Ahora carga relaciones correctamente
                 syncRepository.fullSync()
-
+            }
+            withContext(Dispatchers.Main) {
+                isDataLoaded = true
             }
         }
 
-        // =========================
-        // 4. TEST FIREBASE (OPCIONAL)
-        // =========================
-        val test = hashMapOf(
-            "mensaje" to "Firebase funciona Estrella"
-        )
+        // Test Firebase
+        val test = hashMapOf("mensaje" to "Firebase funciona Estrella")
+        db.collection("GrocerSyncDB").add(test)
+            .addOnSuccessListener { Log.d("FIREBASE", "FUNCIONA Estrella") }
+            .addOnFailureListener { Log.e("FIREBASE", "ERROR") }
 
-        db.collection("GrocerSyncDB")
-            .add(test)
-            .addOnSuccessListener {
-                Log.d("FIREBASE", "FUNCIONA Estrella")
-            }
-            .addOnFailureListener {
-                Log.e("FIREBASE", "ERROR")
-            }
-
-        // =========================
-        // 5. UI NAVIGATION
-        // =========================
         setContent {
             val navController = rememberNavController()
 
-            NavHost(
-                navController = navController,
-                startDestination = "splash"
-            ) {
+            NavHost(navController = navController, startDestination = "splash") {
                 composable("splash") {
                     SplashScreen(
                         onSplashFinished = {
@@ -103,36 +79,23 @@ class MainActivity : ComponentActivity() {
                                 popUpTo("login") { inclusive = true }
                             }
                         },
-                        onNavigateToSign = {
-                            navController.navigate("signup")
-                        }
+                        onNavigateToSign = { navController.navigate("signup") }
                     )
                 }
+
                 composable("signup") {
-                    SignScreen(
-                        // Al crear la cuenta, simplemente vuelve al login
-                        onSignSuccess = {
-                            navController.popBackStack() // quita "signup" y vuelve a "login"
-                        }
-                    )
+                    SignScreen(onSignSuccess = { navController.popBackStack() })
                 }
 
                 composable("main/{listId}") { backStackEntry ->
-
                     val context = LocalContext.current
-
-                    val listId = backStackEntry
-                        .arguments
-                        ?.getString("listId")
-                        ?.toIntOrNull() ?: 1
-
+                    val listId = backStackEntry.arguments?.getString("listId")?.toIntOrNull() ?: 1
                     val dao = AppDatabase.getDatabase(context).listaDao()
                     val repository = ListaRepository(
                         dao = dao,
                         db = FirebaseFirestore.getInstance(),
                         context = context
                     )
-
                     MainListScreen(
                         listId = listId,
                         repository = repository,
@@ -144,18 +107,17 @@ class MainActivity : ComponentActivity() {
                 composable("select") {
                     SelectListScreen(
                         usuarioId = usuarioActualId,
-                        onListSelected = { listaId ->
-                            navController.navigate("main/$listaId")
-                        },
+                        onListSelected = { listaId -> navController.navigate("main/$listaId") },
                         onBack = { navController.popBackStack() },
                         onAddClick = { navController.navigate("add_item") },
                         onStatsClick = { navController.navigate("stats") },
-                        onCreateListClick = { navController.navigate("addList") }  // ← NUEVO
-
+                        onCreateListClick = { navController.navigate("addList") },
+                        navController = navController  // Pasamos navController para el refresco
                     )
                 }
 
-                composable("addItem/{listId}") {
+                composable("addItem/{listId}") { backStackEntry ->
+                    val listId = backStackEntry.arguments?.getString("listId")?.toIntOrNull() ?: 1
                     val context = LocalContext.current
                     val dao = AppDatabase.getDatabase(context).listaDao()
                     val repository = ListaRepository(
@@ -163,15 +125,15 @@ class MainActivity : ComponentActivity() {
                         db = FirebaseFirestore.getInstance(),
                         context = context
                     )
-
                     AddItemScreen(
-                        repository = repository
+                        repository = repository,
+                        listId = listId,
+                        onItemAdded = { navController.popBackStack() }   // ← CIERRA LA PANTALLA
                     )
                 }
 
-                composable("stats") {
-                    StatisticsScreen()
-                }
+                composable("stats") { StatisticsScreen() }
+
                 composable("addList") {
                     val dao = AppDatabase.getDatabase(this@MainActivity).listaDao()
                     val repository = ListaRepository(
@@ -189,108 +151,49 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    // =====================================================
-    // 📥 JSON LOADERS (IGUAL QUE LOS TUYOS PERO OK)
-    // =====================================================
-
+    // ================== CARGA DE DATOS ==================
     private suspend fun cargarUsuariosDesdeJson() {
         val dao = AppDatabase.getDatabase(applicationContext).listaDao()
-        if (dao.getListas().isNotEmpty()) return
-
+        if (dao.getUsuarios().isNotEmpty()) return
         try {
-            val json = resources.openRawResource(R.raw.users)
-                .bufferedReader().use { it.readText() }
-
-            val usuarios: List<Usuario> = Gson().fromJson(
-                json,
-                object : TypeToken<List<Usuario>>() {}.type
-            )
-
+            val json = resources.openRawResource(R.raw.users).bufferedReader().use { it.readText() }
+            val usuarios: List<Usuario> = Gson().fromJson(json, object : TypeToken<List<Usuario>>() {}.type)
             usuarios.forEach { dao.insertUsuario(it) }
-
-            Log.d("DB", "Usuarios: ${usuarios.size}")
-
-        } catch (e: Exception) {
-            Log.e("DB", "Error usuarios", e)
-        }
+            Log.d("DB", "Usuarios cargados: ${usuarios.size}")
+        } catch (e: Exception) { Log.e("DB", "Error usuarios", e) }
     }
 
     private suspend fun cargarListasDesdeJson() {
         val dao = AppDatabase.getDatabase(applicationContext).listaDao()
         if (dao.getListas().isNotEmpty()) return
-
         try {
-            val json = resources.openRawResource(R.raw.listas)
-                .bufferedReader().use { it.readText() }
-
-            val listas: List<Lista> = Gson().fromJson(
-                json,
-                object : TypeToken<List<Lista>>() {}.type
-            )
-
-            listas.forEach {
-                dao.insertLista(it)
-                asignarUsuarioALista(dao, it.id, it.idCreador)
-            }
-
-            Log.d("DB", "Listas: ${listas.size}")
-
-        } catch (e: Exception) {
-            Log.e("DB", "Error listas", e)
-        }
+            val json = resources.openRawResource(R.raw.listas).bufferedReader().use { it.readText() }
+            val listas: List<Lista> = Gson().fromJson(json, object : TypeToken<List<Lista>>() {}.type)
+            listas.forEach { dao.insertLista(it) }
+            Log.d("DB", "Listas cargadas: ${listas.size}")
+        } catch (e: Exception) { Log.e("DB", "Error listas", e) }
     }
 
-    private suspend fun cargarListaUsuarioDesdeJson() {
-        val dao = AppDatabase.getDatabase(applicationContext).listaDao()
-
-        // ⚠️ Solo cargar si no hay relaciones todavía
-        if (dao.getListas().isNotEmpty()) return
-
-        try {
-            val json = resources.openRawResource(R.raw.listusers)
-                .bufferedReader().use { it.readText() }
-
-            val relaciones: List<ListaUsuarioCrossRef> = Gson().fromJson(
-                json,
-                object : TypeToken<List<ListaUsuarioCrossRef>>() {}.type
-            )
-
-            relaciones.forEach { dao.insertListaUsuarioCrossRef(it) }
-
-            Log.d("DB", "Relaciones: ${relaciones.size}")
-        } catch (e: Exception) {
-            Log.e("DB", "Error relaciones", e)
-        }
-    }
-//a
     private suspend fun cargarItemsDesdeJson() {
         val dao = AppDatabase.getDatabase(applicationContext).listaDao()
-    if (dao.getListas().isNotEmpty()) return
-
+        if (dao.getAllItems().isNotEmpty()) return
         try {
-            val json = resources.openRawResource(R.raw.items)
-                .bufferedReader().use { it.readText() }
-
-            val items: List<Item> = Gson().fromJson(
-                json,
-                object : TypeToken<List<Item>>() {}.type
-            )
-
+            val json = resources.openRawResource(R.raw.items).bufferedReader().use { it.readText() }
+            val items: List<Item> = Gson().fromJson(json, object : TypeToken<List<Item>>() {}.type)
             items.forEach { dao.insertItem(it) }
-
-            Log.d("DB", "Items: ${items.size}")
-
-        } catch (e: Exception) {
-            Log.e("DB", "Error items", e)
-        }
+            Log.d("DB", "Items cargados: ${items.size}")
+        } catch (e: Exception) { Log.e("DB", "Error items", e) }
     }
 
-    private suspend fun asignarUsuarioALista(dao: ListaDao, listaId: Int, usuarioId: Int) {
-        if (dao.getListas().isNotEmpty()) return
-
-        dao.insertCrossRef(
-
-            ListaUsuarioCrossRef(listaId, usuarioId)
-        )
+    // ✅ Corregido: solo carga si no existen relaciones
+    private suspend fun cargarListaUsuarioDesdeJson() {
+        val dao = AppDatabase.getDatabase(applicationContext).listaDao()
+        if (dao.getCountListaUsuarioCrossRef() > 0) return
+        try {
+            val json = resources.openRawResource(R.raw.listusers).bufferedReader().use { it.readText() }
+            val relaciones: List<ListaUsuarioCrossRef> = Gson().fromJson(json, object : TypeToken<List<ListaUsuarioCrossRef>>() {}.type)
+            relaciones.forEach { dao.insertListaUsuarioCrossRef(it) }
+            Log.d("DB", "Relaciones cargadas: ${relaciones.size}")
+        } catch (e: Exception) { Log.e("DB", "Error relaciones", e) }
     }
 }

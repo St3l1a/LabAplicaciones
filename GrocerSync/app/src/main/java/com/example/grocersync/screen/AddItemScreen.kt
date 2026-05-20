@@ -33,7 +33,8 @@ import java.io.File
 @Composable
 fun AddItemScreen(
     repository: ListaRepository,
-    listId: Int = 1
+    listId: Int = 1,
+    onItemAdded: () -> Unit
 ) {
 
     val context = LocalContext.current
@@ -212,12 +213,13 @@ fun AddItemScreen(
                                 categoria = categoria,
                                 cantidad = cantidad.toInt(),
                                 comprado = false,
-                                listaId = listId.toInt()
+                                listaId = listId
                             )
 
                             repository.insertItem(newItem)
 
                             Log.d("ADD_ITEM", "Item guardado: $newItem")
+                            onItemAdded()
                         }
                     },
                     modifier = Modifier.fillMaxWidth(),
